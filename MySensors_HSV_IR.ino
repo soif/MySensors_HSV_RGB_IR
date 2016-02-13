@@ -19,19 +19,15 @@
 #define INFO_NAME "RGB IR BedRoom"
 #define INFO_VERS "1.0"
 
-#define RED_PIN 9		
+#define ONEWIRE_PIN 2 
+#define IR_PIN 4
 #define GREEN_PIN 5
 #define BLUE_PIN 6
-
-#define IR_PIN 4
-#define IR_LED_PIN 7
-//#define CORE_LED0_PIN 7
-
-#define ONEWIRE_PIN 2 
-
+#define LED_PIN 7
 #define CE_PIN 8
+#define RED_PIN 9		
 #define CS_PIN 10
-
+#define LDR_PIN 14 // A0 pin
 
 //Sketch works for common CATHODE leds: uncomment this for common ANODE
 //#define COMMON_ANODE 1
@@ -48,7 +44,9 @@
 #define TEMP_INTERVAL 120000	//  (2 min) temperature is sent at this interval (ms)
 //#define TEMP_INTERVAL 8000	// temperature is sent at this interval (ms)
 
-#define LDR_INTERVAL 120000	// light is send at this interval (ms)
+#define LDR_INTERVAL 120000		// luminosity is send at this interval (ms)
+
+#define LED_DURATION 80		// Status led ON duration
 
 
 #define BUTTONS_COUNT 24
@@ -118,9 +116,11 @@ unsigned long	last_ir_button=0;
 float 			last_temp 		= -1;
 unsigned long	last_temp_time	= 0;
 int16_t 		temp_conversion_time =0;
-boolean 		temp_converting =false;
+boolean 		temp_converting 	=false;
 
-IRrecv irrecv(IR_PIN, IR_LED_PIN);
+unsigned long	last_led_time	= 0;
+
+IRrecv irrecv(IR_PIN); 		//IRrecv irrecv(IR_PIN, IR_LED_PIN); dont work. Why ?
 decode_results results;
 
 OneWire            oneWire(ONEWIRE_PIN);
@@ -146,6 +146,8 @@ void setup() {
 	pinMode(RED_PIN, OUTPUT);		
 	pinMode(GREEN_PIN, OUTPUT);
 	pinMode(BLUE_PIN, OUTPUT);
+
+	pinMode(LED_PIN, OUTPUT);
 
 	irrecv.enableIRIn(); // Start the receiver
 
@@ -176,6 +178,7 @@ void loop() {
 	processIr();
 	processSensors();
 	animationUpdate();
+	ledUpdate();
 }
 
 
@@ -287,67 +290,8 @@ void processIrButtons(unsigned long code) {
 	}
 }
 // ----------------------------------------------
-void buttonColor(CHSV color, int offset){
-	Serial.print("Button Color : ");
-
-	color=dimHSV(color,offset);
-	setLeds(color);
-	current_color=color; 
-}
-
-// ----------------------------------------------
-CHSV dimHSV(CHSV color, int offset){
-	offset=offset*10;
-	int bright=color.v + offset;
-	if(bright < 0){
-		bright=0;
-	}
-	if(bright > 255){
-		bright=255;
-	}
-	color.v=bright;
-	return color;
-}
-
-// ----------------------------------------------
-void buttonBrightness(boolean up){
-	Serial.print("Button Brightness : ");
-	if(up){
-		if(current_anim==0){
-			Serial.println("UP");
-			buttonColor(current_color, 1 );
-		}
-		else{
-			Serial.println("FASTER");
-			changeSpeed( - SPEED_STEP );
-		}
-	}
-	else{
-		if(current_anim==0){
-			Serial.println("DOWN");
-			buttonColor(current_color, -1 );
-		}
-		else{
-			Serial.println("SLOWER");
-			changeSpeed( SPEED_STEP );
-		}
-	}
-	Serial.println();
-}
-
-// ----------------------------------------------
-void setBrightness(byte val, boolean convert){
-	if(convert){
-		val =map(val,0,100,0,255);
-	}
-	Serial.print("Setting Brightness to : ");
-	Serial.println(val);
-	current_color.v=val;
-	buttonColor(current_color,0);	
-}
-
-// ----------------------------------------------
 void buttonPower(boolean on){
+	ledOn();
 	Serial.print("Button Power : ");
 	current_anim=0;
 	if(on){
@@ -366,10 +310,79 @@ void buttonPower(boolean on){
 
 // ----------------------------------------------
 void buttonSpecial(byte but){
+	ledOn();
 	Serial.print("Button Special : ");
 	Serial.print(but);
 	Serial.println();
 	animation(but, true);
+}
+
+// ----------------------------------------------
+void buttonBrightness(boolean up){
+	Serial.print("Button Brightness : ");
+	if(up){
+		if(current_anim==0){
+			Serial.println("UP");
+			buttonColor(current_color, 1 );
+		}
+		else{
+			Serial.println("FASTER");
+			buttonChangeSpeed( - SPEED_STEP );
+		}
+	}
+	else{
+		if(current_anim==0){
+			Serial.println("DOWN");
+			buttonColor(current_color, -1 );
+		}
+		else{
+			Serial.println("SLOWER");
+			buttonChangeSpeed( SPEED_STEP );
+		}
+	}
+	Serial.println();
+}
+// ----------------------------------------------
+void buttonColor(CHSV color, int offset){
+	ledOn();
+	Serial.print("Button Color : ");
+	color=dimHSV(color,offset);
+	setLeds(color);
+	current_color=color; 
+}
+
+
+// ----------------------------------------------
+void buttonChangeSpeed(int offset){
+	ledOn();
+	if(offset !=0){
+		current_speed=current_speed + offset ;
+	}
+}
+
+// ----------------------------------------------
+CHSV dimHSV(CHSV color, int offset){
+	offset=offset*10;
+	int bright=color.v + offset;
+	if(bright < 0){
+		bright=0;
+	}
+	if(bright > 255){
+		bright=255;
+	}
+	color.v=bright;
+	return color;
+}
+
+// ----------------------------------------------
+void setBrightness(byte val, boolean convert){
+	if(convert){
+		val =map(val,0,100,0,255);
+	}
+	Serial.print("Setting Brightness to : ");
+	Serial.println(val);
+	current_color.v=val;
+	buttonColor(current_color,0);	
 }
 
 // ----------------------------------------------
@@ -434,12 +447,6 @@ unsigned long rgbToLong(CRGB in){
 */
 
 
-// ----------------------------------------------
-void changeSpeed(int offset){
-	if(offset !=0){
-		current_speed=current_speed + offset ;
-	}
-}
 
 // ----------------------------------------------
 void setSpeed(unsigned long speed){
@@ -619,39 +626,22 @@ void animationUpdate(){
 	animation(current_anim, false);
 }
 
-// http://stackoverflow.com/questions/3018313/algorithm-to-convert-rgb-to-hsv-and-hsv-to-rgb-in-range-0-255-for-both
+// ----------------------------------------------
+void ledUpdate(){
+	if(millis() > last_led_time + LED_DURATION  ){
+		digitalWrite(LED_PIN, LOW);
+	}
+}
+
+// ----------------------------------------------
+void ledOn(){
+	digitalWrite(LED_PIN, HIGH);
+	last_led_time=millis();
+}
 
 //-----------------------------------------------
 CHSV RgbToHsv(CRGB rgb){
-    CHSV hsv;
-    unsigned char rgbMin, rgbMax;
-
-    rgbMin = rgb.r < rgb.g ? (rgb.r < rgb.b ? rgb.r : rgb.b) : (rgb.g < rgb.b ? rgb.g : rgb.b);
-    rgbMax = rgb.r > rgb.g ? (rgb.r > rgb.b ? rgb.r : rgb.b) : (rgb.g > rgb.b ? rgb.g : rgb.b);
-
-    hsv.v = rgbMax;
-    if (hsv.v == 0)
-    {
-        hsv.h = 0;
-        hsv.s = 0;
-        return hsv;
-    }
-
-    hsv.s = 255 * ((long)(rgbMax - rgbMin)) / hsv.v;
-    if (hsv.s == 0)
-    {
-        hsv.h = 0;
-        return hsv;
-    }
-
-    if (rgbMax == rgb.r)
-        hsv.h = 0 + 43 * (rgb.g - rgb.b) / (rgbMax - rgbMin);
-    else if (rgbMax == rgb.g)
-        hsv.h = 85 + 43 * (rgb.b - rgb.r) / (rgbMax - rgbMin);
-    else
-        hsv.h = 171 + 43 * (rgb.r - rgb.g) / (rgbMax - rgbMin);
-
-    return hsv;
+     return rgb2hsv_approximate(rgb);
 }
 
 
