@@ -7,7 +7,15 @@ The sketch provide the following features:
 - Receive all IR remote buttons
 - Show IR & Messages activity on a Led.
 
-Please note that in order to fit the sketch In an ArduinoProMini memory, I had to lighten the IRremote library, so that it only support NEC code.
+
+
+## Required LIbraries
+Apart from common libraries included in the MySensors Project, you will need to add :
+
+ - [FastLed](https://github.com/FastLED/FastLED) which implements HSV methods
+ - [IRremote](https://github.com/z3t0/Arduino-IRremote) or IRremoteNEC (see below)
+
+In order to fit the sketch In an ArduinoProMini memory, I had to lighten the IRremote library, so that it only include NEC codes.
 - So if you want to use the whole sketch you will have to copy the modified **IRremote_NEC** (Included in the Libraries folder) in your main arduino libraries folder.
 - If you dont need the DS18B20 feature, you can rather remove all the code related to Dallas OneWire, and include the genuine IRremote library, which should fit in memory.
 
