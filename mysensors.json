@@ -1,0 +1,99 @@
+{
+	"gh_id": 		"soif/mysensors_template",
+	"name": 		"MySensors Template",
+	"baseline": 	"A template to publish your mysensors project on OpenHardware.io",
+	"description":	"description.md",
+	"version":		"1.0",
+	"type":			"project",
+	"keywords":		"template, mysensors, OpenHardware",
+	"homepage":		"https://www.mysensors.org",
+	"time":			"2016-01-24",	
+	"license":		"MIT",
+	"authors": [
+		{
+			"name":		"Henrik Ekblad",
+			"email":	"henrik.ekblad@mysensors.org",
+			"homepage":	"https://www.mysensors.org",
+			"role": 	"Developper",
+			"gh_user": 	"henrikekblad",
+			"mys_user": "hek"
+		},
+		{
+			"name":		"Patrick Fallberg",
+			"email":	"patrick@mysensors.org",
+			"homepage": "https://github.com/fallberg",
+			"role": 	"Hardware Guru",
+			"gh_user": 	"fallberg",
+			"mys_user": "anticimex"
+			
+		}
+	],
+	"images": [
+		{
+			"type": "main",
+			"file": "photo.jpg"
+		},
+		{
+			"type": "shematic",
+			"file": "shematic.png"
+		},
+		{
+			"type": "wiring",
+			"file": "wiring.png"
+		},
+		{
+			"type": "pcb_front",
+			"file": "pcb_front.jpg"
+		},
+		{
+			"type": "pcb_back",
+			"file": "pcb_back.jpg"
+		},
+		{
+			"type": "misc",
+			"file": "photo2.jpg"
+		},
+		{
+			"type": "misc",
+			"file": "photo_3d.jpg"
+		}
+	],
+	"hardware": [
+		{
+			"type": "fritzing",
+			"file": "wiring.fzz"
+		},
+		{
+			"type": "gerber_tl",
+			"file": "pcb.GTL"
+		},
+		{
+			"type": "gerber_bl",
+			"file": "pcb.GBL"
+		},
+		{
+			"type": "gerber_ts",
+			"file": "pcb.GTS"
+		},
+		{
+			"type": "gerber_bs",
+			"file": "pcb.GBS"
+		},
+		{
+			"type": "gerber_to",
+			"file": "pcb.GTO"
+		},
+		{
+			"type": "gerber_bo",
+			"file": "pcb.GBO"
+		},
+		{
+			"type": "gerber_ml",
+			"file": "pcb.GML"
+		},
+		{
+			"type": "gerber_dr",
+			"file": "pcb.TXT"
+		}
+	]
+}

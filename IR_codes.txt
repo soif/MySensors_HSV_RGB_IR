@@ -1,0 +1,33 @@
+//RGB IR remote codes, each line (top to bottom, from left to right:
+// NEC 32 bits
+FF00FF	//	Light +
+FF807F	//	Light -
+FF40BF	//	OFF
+FFC03F	//	ON
+
+FF20DF	//	Red
+FFA05F	//	Green
+FF609F	//	Blue
+FFE01F	//	White
+
+FF10EF	//	R1
+FF906F	//	G1
+FF50AF	//	B1
+FFD02F	//	Flash
+
+FF30CF	//	R2
+FFB04F	//	G2
+FF708F	//	B2
+FFF00F	//	Strobe
+
+FF08F7	//	R3
+FF8877	//	G3
+FF48B7	//	B3
+FFC837	//	Fade
+
+FF28D7	//	R4
+FFA857	//	G4
+FF6897	//	B4
+FFE817	//	Smooth
+
+
