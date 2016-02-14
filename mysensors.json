@@ -1,37 +1,27 @@
 {
-	"gh_id": 		"soif/mysensors_template",
-	"name": 		"MySensors Template",
-	"baseline": 	"A template to publish your mysensors project on OpenHardware.io",
+	"gh_id": 		"soif/MySensors_HSV_RVB_IR",
+	"name": 		"MySensors HSV RVB IR",
+	"baseline": 	"controls a RGB strip from HSV or RGB messages, while still working with the IR remote",
 	"description":	"description.md",
-	"version":		"1.0",
+	"version":		"0.1",
 	"type":			"project",
-	"keywords":		"template, mysensors, OpenHardware",
+	"keywords":		"HSV, RGB, IR, InfraRed, Infra Red, LD Strip, mysensors, OpenHardware",
 	"homepage":		"https://www.mysensors.org",
-	"time":			"2016-01-24",	
-	"license":		"MIT",
+	"time":			"2016-02-14",	
+	"license":		"GPL",
 	"authors": [
 		{
-			"name":		"Henrik Ekblad",
-			"email":	"henrik.ekblad@mysensors.org",
-			"homepage":	"https://www.mysensors.org",
+			"name":		"François Déchery",
+			"homepage":	"http://www.phpmydomo.org",
 			"role": 	"Developper",
-			"gh_user": 	"henrikekblad",
-			"mys_user": "hek"
-		},
-		{
-			"name":		"Patrick Fallberg",
-			"email":	"patrick@mysensors.org",
-			"homepage": "https://github.com/fallberg",
-			"role": 	"Hardware Guru",
-			"gh_user": 	"fallberg",
-			"mys_user": "anticimex"
-			
+			"gh_user": 	"soif",
+			"mys_user": "soif"
 		}
 	],
 	"images": [
 		{
 			"type": "main",
-			"file": "photo.jpg"
+			"file": "wiring.png"
 		},
 		{
 			"type": "shematic",
@@ -42,58 +32,18 @@
 			"file": "wiring.png"
 		},
 		{
-			"type": "pcb_front",
-			"file": "pcb_front.jpg"
-		},
-		{
-			"type": "pcb_back",
-			"file": "pcb_back.jpg"
+			"type": "misc",
+			"file": "remote.jpg"
 		},
 		{
 			"type": "misc",
-			"file": "photo2.jpg"
-		},
-		{
-			"type": "misc",
-			"file": "photo_3d.jpg"
+			"file": "radio_adapter.jpg"
 		}
 	],
 	"hardware": [
 		{
 			"type": "fritzing",
-			"file": "wiring.fzz"
-		},
-		{
-			"type": "gerber_tl",
-			"file": "pcb.GTL"
-		},
-		{
-			"type": "gerber_bl",
-			"file": "pcb.GBL"
-		},
-		{
-			"type": "gerber_ts",
-			"file": "pcb.GTS"
-		},
-		{
-			"type": "gerber_bs",
-			"file": "pcb.GBS"
-		},
-		{
-			"type": "gerber_to",
-			"file": "pcb.GTO"
-		},
-		{
-			"type": "gerber_bo",
-			"file": "pcb.GBO"
-		},
-		{
-			"type": "gerber_ml",
-			"file": "pcb.GML"
-		},
-		{
-			"type": "gerber_dr",
-			"file": "pcb.TXT"
+			"file": "fritzing.fzz"
 		}
 	]
 }
