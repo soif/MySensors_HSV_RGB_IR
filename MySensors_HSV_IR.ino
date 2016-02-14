@@ -52,9 +52,9 @@
 
 #define DALLAS_CONVERT_TIME 751	// DS18B20 conversion time, Depends on  resolution (9,10,11,12b) : 94, 188, 375, 750
 
-#define BUTTONS_COUNT 24
 
-unsigned long RbutCodes[]={
+#define BUTTONS_COUNT 24
+unsigned long RbutCodes[]={		// IR remote buttons codes
 	0xFF00FF, //	Brightness +
 	0xFF807F, //	Brightness -
 	0xFF40BF, //	OFF
@@ -81,7 +81,7 @@ unsigned long RbutCodes[]={
 	0xFFE817		//	Smooth
 };
 
-unsigned long RbutColors[]={
+unsigned long RbutColors[]={	// IR remote buttons colors
 	0,			//	Brightness +
 	0,			//	Brightness -
 	0,			//	OFF
@@ -195,8 +195,8 @@ void loop() {
 	gw.process();
 	processIr();
 	processSensors();
-	animationUpdate();
-	ledUpdate();
+	updateAnimation();
+	updateStatusLed();
 }
 
 // -----------------------------------------------------------------
@@ -228,7 +228,7 @@ void processSensors(){
 	    if (! isnan(this_temp)) {
 			int cur_temp =  (int) (this_temp * 10 )  ; //rounded to 1 dec
 
-			Serial.print("Tempp * 10 = "); Serial.println(cur_temp);
+			Serial.print("Temp * 10 = "); Serial.println(cur_temp);
 
 	    	// Send only if temperature has changed
 	    	if (cur_temp != last_temp  && cur_temp != -1270 && cur_temp != 850) {
@@ -252,7 +252,7 @@ void processSensors(){
 		//map to 0-100%
 		byte cur_ldr = map( analogRead(LDR_PIN), 0,1023, 0,100);
 
-		Serial.print("Light is : "); Serial.println(cur_ldr);
+		Serial.print("LDR is : "); Serial.println(cur_ldr);
 
 	    // Send only if luminosity has changed
 		if(cur_ldr != last_ldr){
@@ -344,31 +344,31 @@ void SendLastColorStatus(){
 
 // -----------------------------------------------------------------
 void buttonPower(boolean on){
-	ledOn();
+	flashStatusLed();
 	Serial.print("Button Power : ");
 	current_anim=0;
 	if(on){
 		current_status=1;
 		Serial.print("ON");
 		Serial.println();
-		setLeds(current_color);
+		setLedsHSV(current_color);
 	}
 	else{
 		current_status=0;
 		Serial.print("OFF");
 		Serial.println();
-		setLeds(CHSV {0,0,0});
+		setLedsHSV(CHSV {0,0,0});
 	}
 	Serial.println();
 }
 
 // -----------------------------------------------------------------
 void buttonSpecial(byte but){
-	ledOn();
+	flashStatusLed();
 	Serial.print("Button Special : ");
 	Serial.print(but);
 	Serial.println();
-	animation(but, true);
+	processAnimation(but, true);
 }
 
 // -----------------------------------------------------------------
@@ -399,17 +399,17 @@ void buttonBrightness(boolean up){
 
 // -----------------------------------------------------------------
 void buttonColor(CHSV color, int offset){
-	ledOn();
+	flashStatusLed();
 	Serial.print("Button Color : ");
 	color=dimHSV(color,offset);
-	setLeds(color);
+	setLedsHSV(color);
 	current_status=1;
 	current_color=color; 
 }
 
 // -----------------------------------------------------------------
 void buttonChangeSpeed(int offset){
-	ledOn();
+	flashStatusLed();
 	if(offset !=0){
 		current_speed=current_speed + offset ;
 	}
@@ -490,7 +490,7 @@ void setSpeed(unsigned long speed){
 }
 
 // -----------------------------------------------------------------
-void setLedsAnalog(CRGB rgb){
+void setLedsRGB(CRGB rgb){
 	analogWrite(RED_PIN, rgb.r);
 	analogWrite(GREEN_PIN, rgb.g);
 	analogWrite(BLUE_PIN, rgb.b);	
@@ -505,8 +505,8 @@ void setLedsAnalog(CRGB rgb){
 }
 
 // -----------------------------------------------------------------
-//void setLeds(const CRGB& rgb){
-void setLeds(CHSV hsv){
+//void setLedsHSV(const CRGB& rgb){
+void setLedsHSV(CHSV hsv){
 	Serial.print(" --> ( HSV=");
 	Serial.print(hsv.h);
 	Serial.print(",");
@@ -514,46 +514,46 @@ void setLeds(CHSV hsv){
 	Serial.print(",");
 	Serial.print(hsv.v);
 	Serial.print(" ) ");
-	setLedsAnalog( CHSV(hsv) );
+	setLedsRGB( CHSV(hsv) );
 }
 
 // -----------------------------------------------------------------
 void confirmFlash(){
-	setLedsAnalog(CRGB::Black);
+	setLedsRGB(CRGB::Black);
 	gw.wait(80);
 
-	setLedsAnalog(CRGB::White);
+	setLedsRGB(CRGB::White);
 	gw.wait(80);
 
-	setLedsAnalog(CRGB::Black);
+	setLedsRGB(CRGB::Black);
 	gw.wait(80);
 
-	setLedsAnalog(CRGB::White);
+	setLedsRGB(CRGB::White);
 	gw.wait(80);
 
-	setLedsAnalog(CRGB::Black);
+	setLedsRGB(CRGB::Black);
 	gw.wait(80);
 }
 
 // -----------------------------------------------------------------
 void confirmRgb(){
-	setLedsAnalog(CRGB::Black);
+	setLedsRGB(CRGB::Black);
 	gw.wait(100);
 
-	setLedsAnalog(CRGB::Red);
+	setLedsRGB(CRGB::Red);
 	gw.wait(300);
 
-	setLedsAnalog(CRGB::Lime);
+	setLedsRGB(CRGB::Lime);
 	gw.wait(300);
 
-	setLedsAnalog(CRGB::Blue);
+	setLedsRGB(CRGB::Blue);
 	gw.wait(300);
 
-	setLedsAnalog(CRGB::Black);
+	setLedsRGB(CRGB::Black);
 }
 
 // -----------------------------------------------------------------
-void animation(byte mode, boolean init){
+void processAnimation(byte mode, boolean init){
 	if(init && current_anim == mode){
 		current_anim=0;
 		current_status=0;
@@ -571,12 +571,12 @@ void animation(byte mode, boolean init){
 		}
 		unsigned long now= millis();
 		if(current_step==1 && now > (last_update + current_speed) ){
-			setLeds(current_color);
+			setLedsHSV(current_color);
 			current_step=0;
 			last_update = now;
 		}
 		else if(current_step==0 && now > (last_update + ANIM1_PAUSE) ){
-			setLeds(CHSV {0,0,0});
+			setLedsHSV(CHSV {0,0,0});
 			current_step=1;
 			last_update = now;
 		}
@@ -590,12 +590,12 @@ void animation(byte mode, boolean init){
 		}
 		unsigned long now= millis();
 		if(current_step==1 && now > (last_update + ANIM2_PAUSE) ){
-			setLeds(current_color);
+			setLedsHSV(current_color);
 			current_step=0;
 			last_update = now;
 		}
 		else if(current_step==0 && now > (last_update + current_speed) ){
-			setLeds(CHSV {0,0,0});
+			setLedsHSV(CHSV {0,0,0});
 			current_step=1;
 			last_update = now;
 		}
@@ -609,7 +609,7 @@ void animation(byte mode, boolean init){
 
 		unsigned long now= millis();
 		if( now > (last_update + current_speed) ){
-			setLeds( CHSV(current_color.h, current_color.s, dim8_lin(current_step)) );
+			setLedsHSV( CHSV(current_color.h, current_color.s, dim8_lin(current_step)) );
 			if(current_dir){
 				if(current_step == 255){
 					current_dir=false;
@@ -638,7 +638,7 @@ void animation(byte mode, boolean init){
 		}
 		unsigned long now= millis();
 		if( now > (last_update + current_speed) ){
-			setLeds( CHSV(current_step,255,255) );
+			setLedsHSV( CHSV(current_step,255,255) );
 			current_step++;
 			last_update = now;
 			if(current_step > 255){
@@ -655,19 +655,19 @@ void animation(byte mode, boolean init){
 }
 
 // -----------------------------------------------------------------
-void animationUpdate(){
-	animation(current_anim, false);
+void updateAnimation(){
+	processAnimation(current_anim, false);
 }
 
 // -----------------------------------------------------------------
-void ledUpdate(){
+void updateStatusLed(){
 	if(millis() > last_led_time + LED_DURATION  ){
 		digitalWrite(LED_PIN, LOW);
 	}
 }
 
 // -----------------------------------------------------------------
-void ledOn(){
+void flashStatusLed(){
 	digitalWrite(LED_PIN, HIGH);
 	last_led_time=millis();
 }
