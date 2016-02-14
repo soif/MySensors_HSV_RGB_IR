@@ -23,7 +23,7 @@
 #define CHILD_LDR_ID 4
 
 #define INFO_NAME "HSV RGB IR"
-#define INFO_VERS "0.1"
+#define INFO_VERS "0.2"
 
 #define ONEWIRE_PIN 2 
 #define IR_PIN 4
@@ -33,26 +33,27 @@
 #define CE_PIN 8
 #define RED_PIN 9		
 #define CS_PIN 10
-#define LDR_PIN 14 			// A0 pin
+#define LDR_PIN 14 				// A0 pin
 
 #define SPEED_STEP 20
 
-#define ANIM1_SPEED 350		// flash ON Variable
-#define ANIM1_PAUSE 200		// flash OFF fixed
-#define ANIM2_SPEED 550		// strobe OFF variable
-#define ANIM2_PAUSE 150		// storbe ON fixed
-#define ANIM3_SPEED 100		// fade speed
-#define ANIM4_SPEED 700	// smooth speed
+#define ANIM1_SPEED 350			// flash ON Variable
+#define ANIM1_PAUSE 200			// flash OFF fixed
+#define ANIM2_SPEED 550			// strobe OFF variable
+#define ANIM2_PAUSE 150			// storbe ON fixed
+#define ANIM3_SPEED 100			// fade speed
+#define ANIM4_SPEED 700			// smooth speed
 
 #define TEMP_INTERVAL 91000		// (1:31 min) temperature is sent at this interval (ms)
 //#define TEMP_INTERVAL 8000	// temperature is sent at this interval (ms)
 
 #define LDR_INTERVAL 59000		// (1 min) luminosity is send at this interval (ms)
 
-#define LED_DURATION 70		// Status led ON duration
+#define LED_DURATION 70			// Status led ON duration
 
 #define DALLAS_CONVERT_TIME 751	// DS18B20 conversion time, Depends on  resolution (9,10,11,12b) : 94, 188, 375, 750
-#define ACKSEND false
+
+#define ACKSEND false			// send ack to Gateway ?
 
 #define BUTTONS_COUNT 24
 unsigned long RbutCodes[]={		// IR remote buttons codes
@@ -109,7 +110,7 @@ unsigned long RbutColors[]={	// IR remote buttons colors
 	0			//	Smooth
 };
 // debug ###############################################################################
-#define MY_DEBUG
+#define MY_DEBUG	// Comment uncomment (May overflow ProMini memory when set)
 #include "debug.h"
 
 // variables declarations ###############################################################
@@ -125,7 +126,6 @@ unsigned long	last_ir_button=0;
 
 int 			last_temp 		= 0;
 unsigned long	last_temp_time	= 0;
-//int16_t 		temp_conversion_time =0;
 boolean 		temp_converting 	=false;
 
 byte			last_ldr		= 0;
@@ -179,15 +179,11 @@ void setup() {
 	gw.present(CHILD_LDR_ID, 	S_LIGHT_LEVEL);
 	
 	confirmRgb();
-
- 	//Request the last stored colors settings
-	//gw.request(CHILD_RGB_ID, V_VAR1);
 	
 	current_color = RomLoadColor();
 
 	DEBUG_PRINTLN("### Boot complete !");
 }
-
 
 // -----------------------------------------------------------------
 void loop() {
@@ -266,11 +262,12 @@ void processSensors(){
 	}
 }
 
+
 // -----------------------------------------------------------------
 void processIr() {
 	if (irrecv.decode(&results)) {
 		//DEBUG_PRINTLN(results.value, HEX);
-		//dump(&results);
+		//dumpIR(&results);
 		unsigned long code = results.value;
 		if( code == 0xFFFFFFFF){
 			DEBUG_PRINT("Repeat ");
@@ -297,8 +294,6 @@ void processIrButtons(unsigned long code) {
 				buttonBrightness(true);
 				last_ir_button = code;
 				delay(150); //debounce
-	    		//gw.send(msg_temp.set(cur_temp, 1));
-
 			}		 
 			else if(i == 1){
 				buttonBrightness(false);
@@ -335,6 +330,7 @@ void processIrButtons(unsigned long code) {
 		DEBUG_PRINTLN(" ...");
 	}
 }
+
 
 // -----------------------------------------------------------------
 void sendFeedback(){
@@ -386,7 +382,6 @@ void sendFeedback(){
 		gw.send(msg.set( map( current_color.v ,0,255, 0,100) ), ACKSEND);
 	}
 }
-
 
 // -----------------------------------------------------------------
 void buttonPower(boolean on){
@@ -486,6 +481,7 @@ void setBrightness(byte val){
 void incomingMessage(const MyMessage &message) {
 	// We only expect one type of message from controller. But we better check anyway.
 	DEBUG_PRINTLN("--> Processing Incoming Message...");
+
 	if (message.isAck()) {
 		DEBUG_PRINTLN("This is an ack from gateway");
 		return;
@@ -620,8 +616,8 @@ void processAnimation(byte mode, boolean init){
 			current_step=1;
 			last_update = now;
 		}
-
 	}
+
 	// anim2 : strobe
 	else if(current_anim==2){
 		if(init){
@@ -640,6 +636,7 @@ void processAnimation(byte mode, boolean init){
 			last_update = now;
 		}
 	}
+
 	// anim3 : fade
 	else if(current_anim==3){
 		if(init){
@@ -668,8 +665,8 @@ void processAnimation(byte mode, boolean init){
 			}
 			last_update = now;
 		}
-		
 	}
+
 	// anim4 : smooth
 	else if(current_anim==4){
 		if(init){
@@ -685,7 +682,6 @@ void processAnimation(byte mode, boolean init){
 				current_step=0;
 			}
 		}
-
 	}
 	else{
 		//invalid mode
@@ -747,9 +743,20 @@ CHSV RomLoadColor(){
 	return color;
 }
 
+
+
+
+
+
+
+
+
+
+
+
 /*
 
-// Amazing Gizmocuz RVB example #################################################################
+// Helpful Gizmocuz RVB example #################################################################
 
 //https://www.domoticz.com/forum/viewtopic.php?t=8039#p57521
   gw.request(CHILD_ID, V_VAR1);
@@ -780,6 +787,9 @@ String getValue(String data, char separator, int index){
 
 
 
+
+
+
 // OLD ##################################################################################
 // ----------------------------------------------
 CRGB longToRgb(unsigned long rgb){
@@ -800,8 +810,7 @@ CHSV longToHsv(unsigned long hsv){
 }
 
 // ----------------------------------------------
-
-void dump(decode_results *results) {
+void dumpIR(decode_results *results) {
 	// Dumps out the decode_results structure.
 	// Call this after IRrecv::decode()
 	int count = results->rawlen;
