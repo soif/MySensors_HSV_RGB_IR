@@ -1,5 +1,5 @@
 /*
-	RGB IR - Version 1.0
+	MySensors HSL IR - Version 1.0
 	Copyright 2016 Francois Dechery
 */
 #include <MySensor.h>
@@ -38,7 +38,7 @@
 #define ANIM3_SPEED 100		// fade speed
 #define ANIM4_SPEED 700	// smooth speed
 
-#define TEMP_INTERVAL 91000		//  (1:31 min) temperature is sent at this interval (ms)
+#define TEMP_INTERVAL 91000		// (1:31 min) temperature is sent at this interval (ms)
 //#define TEMP_INTERVAL 8000	// temperature is sent at this interval (ms)
 
 #define LDR_INTERVAL 59000		// (1 min) luminosity is send at this interval (ms)
@@ -113,7 +113,7 @@ unsigned long	current_speed = 1000;
 unsigned long	last_update = millis();
 unsigned long	last_ir_button=0;
 
-float 			last_temp 		= -1;
+int 			last_temp 		= 0;
 unsigned long	last_temp_time	= 0;
 //int16_t 		temp_conversion_time =0;
 boolean 		temp_converting 	=false;
@@ -133,6 +133,7 @@ DeviceAddress		temp_address;
 MyTransportNRF24 transport(CE_PIN, CS_PIN, RF24_PA_LEVEL);
 MyHwATMega328 hw;
 MySensor gw(transport,hw);
+
 MyMessage msg_rgb(CHILD_RGB_ID,		V_RGB);
 //MyMessage msg_state(CHILD_RGB_ID,V_VAR1);
 MyMessage msg_mode(CHILD_MODE_ID,	V_VAR1);
@@ -189,11 +190,10 @@ void loop() {
 	ledUpdate();
 }
 
-
 // ----------------------------------------------
 void processSensors(){
 
-	// dallas Sensor
+	// dallas Sensor -------------
 	if(millis() > last_temp_time + TEMP_INTERVAL ){
 
 		// wait that sensor is ready (DALLAS_CONVERT_TIME) to send the lat measure (not the previous one) 
@@ -207,21 +207,23 @@ void processSensors(){
 			//Serial.print("t");
 			return;
 		}
-
 		//Serial.println();
+
 		// Get the Temperature
-		temp_converting=false;	    
-	    float cur_temp = dallas.getTempC(temp_address);
+		temp_converting=false;
+		
+		float this_temp = dallas.getTempC(temp_address); 
+		//float cur_temp = dallas.getTempCByIndex(0);
 
 		// if Temperature is correctly defined
-	    if (! isnan(cur_temp)) {
-			cur_temp = ( (int) (cur_temp * 10 ) )/ 10.0 ; //rounded to 1 dec
-			Serial.print("Temperature is : ");
-			Serial.println(cur_temp);
+	    if (! isnan(this_temp)) {
+			int cur_temp =  (int) (this_temp * 10 )  ; //rounded to 1 dec
+
+			Serial.print("Tempp * 10 = "); Serial.println(cur_temp);
 
 	    	// Send only if temperature has changed
-	    	if (cur_temp != last_temp  && cur_temp != -127.00 && cur_temp != 85.0) {
-	    		gw.send(msg_temp.set(cur_temp, 1));
+	    	if (cur_temp != last_temp  && cur_temp != -1270 && cur_temp != 850) {
+	    		gw.send(msg_temp.set( cur_temp / 10.0 , 1));
 	        	last_temp = cur_temp;
 				last_temp_time= millis();
 			}
@@ -236,13 +238,16 @@ void processSensors(){
 	    }
 	}
 	
-	// LDR sensor
+	// LDR sensor ---------------
 	if( millis() > last_ldr_time + LDR_INTERVAL ){
+		//map to 0-100%
 		byte cur_ldr = map( analogRead(LDR_PIN), 0,1023, 0,100);
-		Serial.print("Light is : ");
-		Serial.println(cur_ldr);
+
+		Serial.print("Light is : "); Serial.println(cur_ldr);
+
+	    // Send only if luminosity has changed
 		if(cur_ldr != last_ldr){
-	    	gw.send(msg_ldr.set(cur_ldr));
+	    	gw.send(msg_ldr.set(cur_ldr, 1 ));
 			last_ldr		= cur_ldr;
 			last_ldr_time	= millis();			
 		}
@@ -328,7 +333,6 @@ void SendLastColorStatus(){
   //gw.send(msg_state.set(cStatus.c_str()));
 }
 
-
 // ----------------------------------------------
 void buttonPower(boolean on){
 	ledOn();
@@ -383,6 +387,7 @@ void buttonBrightness(boolean up){
 	}
 	Serial.println();
 }
+
 // ----------------------------------------------
 void buttonColor(CHSV color, int offset){
 	ledOn();
@@ -392,7 +397,6 @@ void buttonColor(CHSV color, int offset){
 	current_status=1;
 	current_color=color; 
 }
-
 
 // ----------------------------------------------
 void buttonChangeSpeed(int offset){
@@ -469,27 +473,6 @@ void incomingMessage(const MyMessage &message) {
 	}
 }
 
-
-
-
-/*
-// ----------------------------------------------
-CRGB longToRgb(unsigned long rgb){
-	CRGB out;
-	out.r = rgb >> 16;
-	out.g = rgb >> 8 & 0xFF;
-	out.b = rgb & 0xFF;
-	return out;
-}
-
-// ----------------------------------------------
-unsigned long rgbToLong(CRGB in){
-	return (((long)in.r & 0xFF) << 16) + (((long)in.g & 0xFF) << 8) + ((long)in.b & 0xFF);
-}
-*/
-
-
-
 // ----------------------------------------------
 void setSpeed(unsigned long speed){
 	if(speed !=0){
@@ -511,7 +494,6 @@ void setLedsAnalog(CRGB rgb){
 	Serial.print(rgb.b);
 	Serial.println();
 }
-
 
 // ----------------------------------------------
 //void setLeds(const CRGB& rgb){
@@ -560,7 +542,6 @@ void confirmRgb(){
 
 	setLeds(CHSV {0,0,0});
 }
-
 
 // ----------------------------------------------
 void animation(byte mode, boolean init){
@@ -663,6 +644,7 @@ void animation(byte mode, boolean init){
 		current_status=0;
 	}
 }
+
 // ----------------------------------------------
 void animationUpdate(){
 	animation(current_anim, false);
@@ -685,6 +667,27 @@ void ledOn(){
 CHSV RgbToHsv(CRGB rgb){
      return rgb2hsv_approximate(rgb);
 }
+
+
+
+
+/*
+// ----------------------------------------------
+CRGB longToRgb(unsigned long rgb){
+	CRGB out;
+	out.r = rgb >> 16;
+	out.g = rgb >> 8 & 0xFF;
+	out.b = rgb & 0xFF;
+	return out;
+}
+
+// ----------------------------------------------
+unsigned long rgbToLong(CRGB in){
+	return (((long)in.r & 0xFF) << 16) + (((long)in.g & 0xFF) << 8) + ((long)in.b & 0xFF);
+}
+*/
+
+
 
 
 
