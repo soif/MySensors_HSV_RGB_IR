@@ -748,7 +748,39 @@ CHSV RomLoadColor(){
 }
 
 /*
-// OLD ###################################################################################
+
+// Amazing Gizmocuz RVB example #################################################################
+
+//https://www.domoticz.com/forum/viewtopic.php?t=8039#p57521
+  gw.request(CHILD_ID, V_VAR1);
+
+
+strcpy(actRGBvalue, getValue(szMessage,'&',0).c_str());
+actRGBbrightness=atoi(getValue(szMessage,'&',1).c_str());
+actRGBonoff=atoi(getValue(szMessage,'&',2).c_str());
+
+void SendLastColorStatus(){
+  String cStatus=actRGBvalue+String("&")+String(actRGBbrightness)+String("&")+String(actRGBonoff);
+  gw.send(lastColorStatusMsg.set(cStatus.c_str()));
+}
+
+String getValue(String data, char separator, int index){
+ int found = 0;
+  int strIndex[] = {0, -1};
+  int maxIndex = data.length()-1;
+  for(int i=0; i<=maxIndex && found<=index; i++){
+  if(data.charAt(i)==separator || i==maxIndex){
+  found++;
+  strIndex[0] = strIndex[1]+1;
+  strIndex[1] = (i == maxIndex) ? i+1 : i;
+  }
+ }
+  return found>index ? data.substring(strIndex[0], strIndex[1]) : "";
+}
+
+
+
+// OLD ##################################################################################
 // ----------------------------------------------
 CRGB longToRgb(unsigned long rgb){
 	CRGB out;
