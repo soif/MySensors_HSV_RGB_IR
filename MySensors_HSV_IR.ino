@@ -10,7 +10,7 @@
 #include <DallasTemperature.h>
 #include <OneWire.h>
 
-#define NODE_ID 	199
+#define NODE_ID 199
 #define CHILD_RGB_ID 1
 #define CHILD_MODE_ID 2
 #define CHILD_SPEED_ID 3
@@ -29,9 +29,6 @@
 #define CS_PIN 10
 #define LDR_PIN 14 // A0 pin
 
-//Sketch works for common CATHODE leds: uncomment this for common ANODE
-//#define COMMON_ANODE 1
-
 #define SPEED_STEP 20
 
 #define ANIM1_SPEED 350		// flash ON Variable
@@ -41,12 +38,12 @@
 #define ANIM3_SPEED 100		// fade speed
 #define ANIM4_SPEED 700	// smooth speed
 
-#define TEMP_INTERVAL 120000	//  (2 min) temperature is sent at this interval (ms)
+#define TEMP_INTERVAL 91000		//  (1:31 min) temperature is sent at this interval (ms)
 //#define TEMP_INTERVAL 8000	// temperature is sent at this interval (ms)
 
-#define LDR_INTERVAL 120000		// luminosity is send at this interval (ms)
+#define LDR_INTERVAL 59000		// (1 min) luminosity is send at this interval (ms)
 
-#define LED_DURATION 80		// Status led ON duration
+#define LED_DURATION 70		// Status led ON duration
 
 
 #define BUTTONS_COUNT 24
@@ -106,6 +103,7 @@ unsigned long RbutColors[]={
 };
 
 CHSV 			current_color	= CHSV(0,255,255);
+byte 			current_status  = 0 ;
 byte 			current_anim  = 0 ;
 byte 			current_step  = 0;
 boolean 		current_dir	  = true;
@@ -117,6 +115,9 @@ float 			last_temp 		= -1;
 unsigned long	last_temp_time	= 0;
 int16_t 		temp_conversion_time =0;
 boolean 		temp_converting 	=false;
+
+byte			last_ldr		= 0;
+unsigned long	last_ldr_time	= 0;
 
 unsigned long	last_led_time	= 0;
 
@@ -131,9 +132,12 @@ MyTransportNRF24 transport(CE_PIN, CS_PIN, RF24_PA_LEVEL);
 MyHwATMega328 hw;
 MySensor gw(transport,hw);
 MyMessage msg_rgb(CHILD_RGB_ID,		V_RGB);
+//MyMessage msg_state(CHILD_RGB_ID,V_VAR1);
 MyMessage msg_mode(CHILD_MODE_ID,	V_VAR1);
 MyMessage msg_speed(CHILD_SPEED_ID,	V_VAR2);
+
 MyMessage msg_temp(CHILD_TEMP_ID,	V_TEMP);
+MyMessage msg_ldr(CHILD_LDR_ID,	V_LIGHT_LEVEL);
 
 
 // ----------------------------------------------
@@ -162,13 +166,16 @@ void setup() {
 	gw.present(CHILD_RGB_ID, 	S_RGB_LIGHT);
 	gw.present(CHILD_MODE_ID,	S_CUSTOM);
 	gw.present(CHILD_SPEED_ID,	S_CUSTOM);
-	gw.present(CHILD_TEMP_ID, S_TEMP);
+	gw.present(CHILD_TEMP_ID,	S_TEMP);
+	gw.present(CHILD_LDR_ID, 	S_LIGHT_LEVEL);
 	
 	confirmRgb();
 	//bitSet(TCCR1B, WGM12);
 
+ 	//Request the last stored colors settings
+	//gw.request(CHILD_RGB_ID, V_VAR1);
+
 	Serial.println("### Boot complete !");
-	
 }
 
 
@@ -185,6 +192,7 @@ void loop() {
 // ----------------------------------------------
 void processSensors(){
 
+	// dallas Sensor
 	if(millis() > last_temp_time + TEMP_INTERVAL ){
 
 		if(!temp_converting){
@@ -212,15 +220,31 @@ void processSensors(){
 				last_temp_time= millis();
 			}
 			else{
-	      		//retry in 10s
-	    		last_temp_time = last_temp_time+10000;
+	      		// retry in 33s
+	    		last_temp_time = last_temp_time + 33000;
 			}
 	    }
 	    else{
-	    	last_temp_time = last_temp_time+10000;
+	      	// (bug!) retry in 13s
+	    	last_temp_time = last_temp_time + 13000;
 	    }
 	}
-
+	
+	// LDR sensor
+	if( millis() > last_ldr_time + LDR_INTERVAL ){
+		byte cur_ldr = map( analogRead(LDR_PIN), 0,1023, 0,100);
+		Serial.print("Light is : ");
+		Serial.println(cur_ldr);
+		if(cur_ldr != last_ldr){
+	    	gw.send(msg_ldr.set(cur_ldr));
+			last_ldr		= cur_ldr;
+			last_ldr_time	= millis();			
+		}
+		else{
+	      	//retry in 17s
+	    	last_ldr_time = last_ldr_time + 17000;
+		}
+	}
 }
 
 // ----------------------------------------------
@@ -254,6 +278,8 @@ void processIrButtons(unsigned long code) {
 				buttonBrightness(true);
 				last_ir_button = code;
 				delay(150); //debounce
+	    		//gw.send(msg_temp.set(cur_temp, 1));
+
 			}		 
 			else if(i == 1){
 				buttonBrightness(false);
@@ -289,20 +315,29 @@ void processIrButtons(unsigned long code) {
 		Serial.println(" ...");
 	}
 }
+
+// ----------------------------------------------
+void SendLastColorStatus(){
+  //String cStatus=CHSV(current_color) + String("&") + String(current_color.v) + String("&") + String(current_status);
+  //gw.send(msg_state.set(cStatus.c_str()));
+}
+
+
 // ----------------------------------------------
 void buttonPower(boolean on){
 	ledOn();
 	Serial.print("Button Power : ");
 	current_anim=0;
 	if(on){
+		current_status=1;
 		Serial.print("ON");
 		Serial.println();
 		setLeds(current_color);
 	}
 	else{
+		current_status=0;
 		Serial.print("OFF");
 		Serial.println();
-		current_anim=0;
 		setLeds(CHSV {0,0,0});
 	}
 	Serial.println();
@@ -348,6 +383,7 @@ void buttonColor(CHSV color, int offset){
 	Serial.print("Button Color : ");
 	color=dimHSV(color,offset);
 	setLeds(color);
+	current_status=1;
 	current_color=color; 
 }
 
@@ -364,8 +400,8 @@ void buttonChangeSpeed(int offset){
 CHSV dimHSV(CHSV color, int offset){
 	offset=offset*10;
 	int bright=color.v + offset;
-	if(bright < 0){
-		bright=0;
+	if(bright < 1){
+		bright=1; // no off
 	}
 	if(bright > 255){
 		bright=255;
@@ -457,11 +493,6 @@ void setSpeed(unsigned long speed){
 
 // ----------------------------------------------
 void setLedsAnalog(CRGB rgb){
-	#ifdef COMMON_ANODE
-		rgb.r = 255 - rgb.r;
-		rgb.g = 255 - rgb.g;
-		rgb.b = 255 - rgb.b;
-	#endif
 	analogWrite(RED_PIN, rgb.r);
 	analogWrite(GREEN_PIN, rgb.g);
 	analogWrite(BLUE_PIN, rgb.b);	
@@ -529,10 +560,13 @@ void confirmRgb(){
 void animation(byte mode, boolean init){
 	if(init && current_anim == mode){
 		current_anim=0;
+		current_status=0;
 		confirmFlash();
 		return;
 	}
 	current_anim=mode;
+	current_status=1;
+
 	// anim1 : flash
 	if(current_anim==1){
 		if(init){
@@ -618,7 +652,9 @@ void animation(byte mode, boolean init){
 
 	}
 	else{
+		//invalid mode
 		current_anim=0;
+		current_status=0;
 	}
 }
 // ----------------------------------------------
