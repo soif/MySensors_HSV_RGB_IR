@@ -19,10 +19,8 @@
 #define NODE_ID 199		// 255 for Auto
 #define CHILD_RGB_ID 1
 #define CHILD_HSV_ID 2
-//#define CHILD_MODE_ID 2
-//#define CHILD_SPEED_ID 3
-#define CHILD_TEMP_ID 4
-#define CHILD_LDR_ID 5
+#define CHILD_TEMP_ID 3
+#define CHILD_LDR_ID 4
 
 #define INFO_NAME "HSV RGB IR"
 #define INFO_VERS "0.1"
@@ -146,14 +144,6 @@ MyTransportNRF24 transport(CE_PIN, CS_PIN, RF24_PA_LEVEL);
 MyHwATMega328 hw;
 MySensor gw(transport,hw);
 
-//MyMessage msg_rgbColor(CHILD_RGB_ID,	V_RGB);
-//MyMessage msg_rgbDim(CHILD_RGB_ID,		V_PERCENTAGE);
-//MyMessage msg_rgbStatus(CHILD_RGB_ID,	V_STATUS);
-
-//MyMessage msg_mode(CHILD_MODE_ID,	V_VAR1);
-//MyMessage msg_speed(CHILD_SPEED_ID,	V_VAR2);
-//MyMessage msg_hsv(CHILD_HSV_ID,		V_VAR3);
-
 MyMessage msg_temp(CHILD_TEMP_ID,	V_TEMP);
 MyMessage msg_ldr(CHILD_LDR_ID,		V_LIGHT_LEVEL);
 
@@ -185,13 +175,10 @@ void setup() {
 	
 	gw.present(CHILD_RGB_ID, 	S_RGB_LIGHT);
 	gw.present(CHILD_HSV_ID, 	S_RGB_LIGHT);
-	//gw.present(CHILD_MODE_ID,		S_CUSTOM);
-	//gw.present(CHILD_SPEED_ID,	S_CUSTOM);
 	gw.present(CHILD_TEMP_ID,	S_TEMP);
 	gw.present(CHILD_LDR_ID, 	S_LIGHT_LEVEL);
 	
 	confirmRgb();
-	//bitSet(TCCR1B, WGM12);
 
  	//Request the last stored colors settings
 	//gw.request(CHILD_RGB_ID, V_VAR1);
@@ -508,14 +495,6 @@ void incomingMessage(const MyMessage &message) {
 		String color_string = message.getString();
 		CRGB color = (long) strtol( &color_string[0], NULL, 16);
 		buttonColor(RgbToHsv(color),0);
-		
-		// Store state in eeprom
-		//gw.saveState(0, state);
-	
-		//DEBUG_PRINT("Incoming change for sensor:");
-		//DEBUG_PRINT(message.sensor);
-		//DEBUG_PRINT(", New status: ");
-		//DEBUG_PRINTLN(message.getBool());
 	} 
 	else if (message.type == V_STATUS){
 		buttonPower(message.getBool());
