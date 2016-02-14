@@ -1,7 +1,10 @@
 /*
-	MySensors HSL IR - Version 1.0
+	MySensors HSV IR - Version 1.0
 	Copyright 2016 Francois Dechery
 */
+
+// Includes #############################################################################
+
 #include <MySensor.h>
 #include <SPI.h>
 #include <FastLED.h>
@@ -10,12 +13,14 @@
 #include <DallasTemperature.h>
 #include <OneWire.h>
 
+// Defines ##############################################################################
 #define NODE_ID 199		// 255 for Auto
 #define CHILD_RGB_ID 1
 #define CHILD_MODE_ID 2
 #define CHILD_SPEED_ID 3
 #define CHILD_TEMP_ID 4
 #define CHILD_LDR_ID 5
+
 #define INFO_NAME "RGB IR BedRoom"
 #define INFO_VERS "1.0"
 
@@ -27,7 +32,7 @@
 #define CE_PIN 8
 #define RED_PIN 9		
 #define CS_PIN 10
-#define LDR_PIN 14 // A0 pin
+#define LDR_PIN 14 			// A0 pin
 
 #define SPEED_STEP 20
 
@@ -45,8 +50,7 @@
 
 #define LED_DURATION 70		// Status led ON duration
 
-// internal
-#define DALLAS_CONVERT_TIME 751	// Depends on DS18B20  resolution 94, 188, 375, 750
+#define DALLAS_CONVERT_TIME 751	// DS18B20 conversion time, Depends on  resolution (9,10,11,12b) : 94, 188, 375, 750
 
 #define BUTTONS_COUNT 24
 
@@ -104,6 +108,9 @@ unsigned long RbutColors[]={
 	0			//	Smooth
 };
 
+
+// variables declarations ###############################################################
+
 CHSV 			current_color	= CHSV(0,255,255);
 byte 			current_status  = 0 ;
 byte 			current_anim  = 0 ;
@@ -143,7 +150,9 @@ MyMessage msg_temp(CHILD_TEMP_ID,	V_TEMP);
 MyMessage msg_ldr(CHILD_LDR_ID,	V_LIGHT_LEVEL);
 
 
-// ----------------------------------------------
+// Here we start ########################################################################
+
+// -----------------------------------------------------------------
 void setup() {
 	Serial.begin(115200);
 	delay(100);
@@ -181,7 +190,7 @@ void setup() {
 }
 
 
-// ----------------------------------------------
+// -----------------------------------------------------------------
 void loop() {
 	gw.process();
 	processIr();
@@ -190,7 +199,7 @@ void loop() {
 	ledUpdate();
 }
 
-// ----------------------------------------------
+// -----------------------------------------------------------------
 void processSensors(){
 
 	// dallas Sensor -------------
@@ -258,7 +267,7 @@ void processSensors(){
 	}
 }
 
-// ----------------------------------------------
+// -----------------------------------------------------------------
 void processIr() {
 	if (irrecv.decode(&results)) {
 		//Serial.println(results.value, HEX);
@@ -273,7 +282,7 @@ void processIr() {
 	}
 }
 
-// ----------------------------------------------
+// -----------------------------------------------------------------
 void processIrButtons(unsigned long code) {
 	//Serial.print(results->value, HEX);
 	boolean done=false;
@@ -327,13 +336,13 @@ void processIrButtons(unsigned long code) {
 	}
 }
 
-// ----------------------------------------------
+// -----------------------------------------------------------------
 void SendLastColorStatus(){
   //String cStatus=CHSV(current_color) + String("&") + String(current_color.v) + String("&") + String(current_status);
   //gw.send(msg_state.set(cStatus.c_str()));
 }
 
-// ----------------------------------------------
+// -----------------------------------------------------------------
 void buttonPower(boolean on){
 	ledOn();
 	Serial.print("Button Power : ");
@@ -353,7 +362,7 @@ void buttonPower(boolean on){
 	Serial.println();
 }
 
-// ----------------------------------------------
+// -----------------------------------------------------------------
 void buttonSpecial(byte but){
 	ledOn();
 	Serial.print("Button Special : ");
@@ -362,7 +371,7 @@ void buttonSpecial(byte but){
 	animation(but, true);
 }
 
-// ----------------------------------------------
+// -----------------------------------------------------------------
 void buttonBrightness(boolean up){
 	Serial.print("Button Brightness : ");
 	if(up){
@@ -388,7 +397,7 @@ void buttonBrightness(boolean up){
 	Serial.println();
 }
 
-// ----------------------------------------------
+// -----------------------------------------------------------------
 void buttonColor(CHSV color, int offset){
 	ledOn();
 	Serial.print("Button Color : ");
@@ -398,7 +407,7 @@ void buttonColor(CHSV color, int offset){
 	current_color=color; 
 }
 
-// ----------------------------------------------
+// -----------------------------------------------------------------
 void buttonChangeSpeed(int offset){
 	ledOn();
 	if(offset !=0){
@@ -406,7 +415,7 @@ void buttonChangeSpeed(int offset){
 	}
 }
 
-// ----------------------------------------------
+// -----------------------------------------------------------------
 CHSV dimHSV(CHSV color, int offset){
 	offset=offset*10;
 	int bright=color.v + offset;
@@ -420,7 +429,7 @@ CHSV dimHSV(CHSV color, int offset){
 	return color;
 }
 
-// ----------------------------------------------
+// -----------------------------------------------------------------
 void setBrightness(byte val, boolean convert){
 	if(convert){
 		val =map(val,0,100,0,255);
@@ -431,7 +440,7 @@ void setBrightness(byte val, boolean convert){
 	buttonColor(current_color,0);	
 }
 
-// ----------------------------------------------
+// -----------------------------------------------------------------
 void incomingMessage(const MyMessage &message) {
 	// We only expect one type of message from controller. But we better check anyway.
 	Serial.println("--> Processing Incoming Message...");
@@ -473,14 +482,14 @@ void incomingMessage(const MyMessage &message) {
 	}
 }
 
-// ----------------------------------------------
+// -----------------------------------------------------------------
 void setSpeed(unsigned long speed){
 	if(speed !=0){
 		current_speed=speed ;
 	}
 }
 
-// ----------------------------------------------
+// -----------------------------------------------------------------
 void setLedsAnalog(CRGB rgb){
 	analogWrite(RED_PIN, rgb.r);
 	analogWrite(GREEN_PIN, rgb.g);
@@ -495,7 +504,7 @@ void setLedsAnalog(CRGB rgb){
 	Serial.println();
 }
 
-// ----------------------------------------------
+// -----------------------------------------------------------------
 //void setLeds(const CRGB& rgb){
 void setLeds(CHSV hsv){
 	Serial.print(" --> ( HSV=");
@@ -508,42 +517,42 @@ void setLeds(CHSV hsv){
 	setLedsAnalog( CHSV(hsv) );
 }
 
-// ----------------------------------------------
+// -----------------------------------------------------------------
 void confirmFlash(){
-	setLeds(CHSV {0,0,0});
-	gw.wait(100);
-
-	setLeds(CHSV {0,0,100});
+	setLedsAnalog(CRGB::Black);
 	gw.wait(80);
 
-	setLeds(CHSV {0,0,0});
+	setLedsAnalog(CRGB::White);
 	gw.wait(80);
 
-	setLeds(RgbToHsv(CRGB::White));
+	setLedsAnalog(CRGB::Black);
 	gw.wait(80);
 
-	setLeds(CHSV {0,0,0});
+	setLedsAnalog(CRGB::White);
+	gw.wait(80);
+
+	setLedsAnalog(CRGB::Black);
 	gw.wait(80);
 }
 
-// ----------------------------------------------
+// -----------------------------------------------------------------
 void confirmRgb(){
-	setLeds(CHSV {0,0,0});
+	setLedsAnalog(CRGB::Black);
 	gw.wait(100);
 
-	setLeds(CHSV {0,255,100});
+	setLedsAnalog(CRGB::Red);
 	gw.wait(300);
 
-	setLeds(CHSV {85,255,100});
+	setLedsAnalog(CRGB::Lime);
 	gw.wait(300);
 
-	setLeds(CHSV {171,255,100});
+	setLedsAnalog(CRGB::Blue);
 	gw.wait(300);
 
-	setLeds(CHSV {0,0,0});
+	setLedsAnalog(CRGB::Black);
 }
 
-// ----------------------------------------------
+// -----------------------------------------------------------------
 void animation(byte mode, boolean init){
 	if(init && current_anim == mode){
 		current_anim=0;
@@ -645,25 +654,25 @@ void animation(byte mode, boolean init){
 	}
 }
 
-// ----------------------------------------------
+// -----------------------------------------------------------------
 void animationUpdate(){
 	animation(current_anim, false);
 }
 
-// ----------------------------------------------
+// -----------------------------------------------------------------
 void ledUpdate(){
 	if(millis() > last_led_time + LED_DURATION  ){
 		digitalWrite(LED_PIN, LOW);
 	}
 }
 
-// ----------------------------------------------
+// -----------------------------------------------------------------
 void ledOn(){
 	digitalWrite(LED_PIN, HIGH);
 	last_led_time=millis();
 }
 
-//-----------------------------------------------
+// -----------------------------------------------------------------
 CHSV RgbToHsv(CRGB rgb){
      return rgb2hsv_approximate(rgb);
 }
@@ -672,6 +681,7 @@ CHSV RgbToHsv(CRGB rgb){
 
 
 /*
+// OLD ###################################################################################
 // ----------------------------------------------
 CRGB longToRgb(unsigned long rgb){
 	CRGB out;
@@ -684,15 +694,9 @@ CRGB longToRgb(unsigned long rgb){
 // ----------------------------------------------
 unsigned long rgbToLong(CRGB in){
 	return (((long)in.r & 0xFF) << 16) + (((long)in.g & 0xFF) << 8) + ((long)in.b & 0xFF);
-}
-*/
 
+// ----------------------------------------------
 
-
-
-
-
-/*
 void dump(decode_results *results) {
 	// Dumps out the decode_results structure.
 	// Call this after IRrecv::decode()
