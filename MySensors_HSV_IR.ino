@@ -1,6 +1,8 @@
 /*
-	MySensors HSV IR - Version 1.0
+	MySensors HSV IR - Version 0.1
 	Copyright 2016 Francois Dechery
+
+	https://media.readthedocs.org/pdf/mysensors/latest/mysensors.pdf
 */
 
 // Includes #############################################################################
@@ -16,13 +18,14 @@
 // Defines ##############################################################################
 #define NODE_ID 199		// 255 for Auto
 #define CHILD_RGB_ID 1
-#define CHILD_MODE_ID 2
-#define CHILD_SPEED_ID 3
+#define CHILD_HSV_ID 2
+//#define CHILD_MODE_ID 2
+//#define CHILD_SPEED_ID 3
 #define CHILD_TEMP_ID 4
 #define CHILD_LDR_ID 5
 
-#define INFO_NAME "RGB IR BedRoom"
-#define INFO_VERS "1.0"
+#define INFO_NAME "HSV RGB IR"
+#define INFO_VERS "0.1"
 
 #define ONEWIRE_PIN 2 
 #define IR_PIN 4
@@ -51,7 +54,7 @@
 #define LED_DURATION 70		// Status led ON duration
 
 #define DALLAS_CONVERT_TIME 751	// DS18B20 conversion time, Depends on  resolution (9,10,11,12b) : 94, 188, 375, 750
-
+#define ACKSEND false
 
 #define BUTTONS_COUNT 24
 unsigned long RbutCodes[]={		// IR remote buttons codes
@@ -107,7 +110,9 @@ unsigned long RbutColors[]={	// IR remote buttons colors
 	0xEF45AD,	//	B4
 	0			//	Smooth
 };
-
+// debug ###############################################################################
+#define MY_DEBUG
+#include "debug.h"
 
 // variables declarations ###############################################################
 
@@ -141,13 +146,16 @@ MyTransportNRF24 transport(CE_PIN, CS_PIN, RF24_PA_LEVEL);
 MyHwATMega328 hw;
 MySensor gw(transport,hw);
 
-MyMessage msg_rgb(CHILD_RGB_ID,		V_RGB);
-//MyMessage msg_state(CHILD_RGB_ID,V_VAR1);
-MyMessage msg_mode(CHILD_MODE_ID,	V_VAR1);
-MyMessage msg_speed(CHILD_SPEED_ID,	V_VAR2);
+//MyMessage msg_rgbColor(CHILD_RGB_ID,	V_RGB);
+//MyMessage msg_rgbDim(CHILD_RGB_ID,		V_PERCENTAGE);
+//MyMessage msg_rgbStatus(CHILD_RGB_ID,	V_STATUS);
+
+//MyMessage msg_mode(CHILD_MODE_ID,	V_VAR1);
+//MyMessage msg_speed(CHILD_SPEED_ID,	V_VAR2);
+//MyMessage msg_hsv(CHILD_HSV_ID,		V_VAR3);
 
 MyMessage msg_temp(CHILD_TEMP_ID,	V_TEMP);
-MyMessage msg_ldr(CHILD_LDR_ID,	V_LIGHT_LEVEL);
+MyMessage msg_ldr(CHILD_LDR_ID,		V_LIGHT_LEVEL);
 
 
 // Here we start ########################################################################
@@ -156,8 +164,8 @@ MyMessage msg_ldr(CHILD_LDR_ID,	V_LIGHT_LEVEL);
 void setup() {
 	Serial.begin(115200);
 	delay(100);
-	Serial.println(" ");
-	Serial.println("### Booting...");
+	DEBUG_PRINTLN(" ");
+	DEBUG_PRINTLN("### Booting...");
 
 	pinMode(RED_PIN, OUTPUT);		
 	pinMode(GREEN_PIN, OUTPUT);
@@ -174,9 +182,11 @@ void setup() {
 
 	gw.begin(incomingMessage, NODE_ID, false);
 	gw.sendSketchInfo(INFO_NAME, INFO_VERS);
+	
 	gw.present(CHILD_RGB_ID, 	S_RGB_LIGHT);
-	gw.present(CHILD_MODE_ID,	S_CUSTOM);
-	gw.present(CHILD_SPEED_ID,	S_CUSTOM);
+	gw.present(CHILD_HSV_ID, 	S_RGB_LIGHT);
+	//gw.present(CHILD_MODE_ID,		S_CUSTOM);
+	//gw.present(CHILD_SPEED_ID,	S_CUSTOM);
 	gw.present(CHILD_TEMP_ID,	S_TEMP);
 	gw.present(CHILD_LDR_ID, 	S_LIGHT_LEVEL);
 	
@@ -185,8 +195,10 @@ void setup() {
 
  	//Request the last stored colors settings
 	//gw.request(CHILD_RGB_ID, V_VAR1);
+	
+	current_color = RomLoadColor();
 
-	Serial.println("### Boot complete !");
+	DEBUG_PRINTLN("### Boot complete !");
 }
 
 
@@ -207,16 +219,16 @@ void processSensors(){
 
 		// wait that sensor is ready (DALLAS_CONVERT_TIME) to send the lat measure (not the previous one) 
 		if(!temp_converting){
-			//Serial.println("Requesting temp");
+			//DEBUG_PRINTLN("Requesting temp");
 		    dallas.requestTemperatures(); // Send the command to get temperatures
 		    temp_converting=true;
 		    return;
 		}
 		else if(millis() < last_temp_time + TEMP_INTERVAL + DALLAS_CONVERT_TIME){
-			//Serial.print("t");
+			//DEBUG_PRINT("t");
 			return;
 		}
-		//Serial.println();
+		//DEBUG_PRINTLN('');
 
 		// Get the Temperature
 		temp_converting=false;
@@ -228,11 +240,11 @@ void processSensors(){
 	    if (! isnan(this_temp)) {
 			int cur_temp =  (int) (this_temp * 10 )  ; //rounded to 1 dec
 
-			Serial.print("Temp * 10 = "); Serial.println(cur_temp);
+			DEBUG_PRINT("Temp * 10 = "); DEBUG_PRINTLN(cur_temp);
 
 	    	// Send only if temperature has changed
 	    	if (cur_temp != last_temp  && cur_temp != -1270 && cur_temp != 850) {
-	    		gw.send(msg_temp.set( cur_temp / 10.0 , 1));
+	    		gw.send(msg_temp.set( cur_temp / 10.0 , ACKSEND));
 	        	last_temp = cur_temp;
 				last_temp_time= millis();
 			}
@@ -252,11 +264,11 @@ void processSensors(){
 		//map to 0-100%
 		byte cur_ldr = map( analogRead(LDR_PIN), 0,1023, 0,100);
 
-		Serial.print("LDR is : "); Serial.println(cur_ldr);
+		DEBUG_PRINT("LDR is : "); DEBUG_PRINTLN(cur_ldr);
 
 	    // Send only if luminosity has changed
 		if(cur_ldr != last_ldr){
-	    	gw.send(msg_ldr.set(cur_ldr, 1 ));
+	    	gw.send(msg_ldr.set(cur_ldr, ACKSEND ));
 			last_ldr		= cur_ldr;
 			last_ldr_time	= millis();			
 		}
@@ -270,11 +282,11 @@ void processSensors(){
 // -----------------------------------------------------------------
 void processIr() {
 	if (irrecv.decode(&results)) {
-		//Serial.println(results.value, HEX);
+		//DEBUG_PRINTLN(results.value, HEX);
 		//dump(&results);
 		unsigned long code = results.value;
 		if( code == 0xFFFFFFFF){
-			Serial.print("Repeat ");
+			DEBUG_PRINT("Repeat ");
 			code = last_ir_button;
 		}
 		processIrButtons(code);
@@ -284,13 +296,13 @@ void processIr() {
 
 // -----------------------------------------------------------------
 void processIrButtons(unsigned long code) {
-	//Serial.print(results->value, HEX);
+	//DEBUG_PRINT(results->value, HEX);
 	boolean done=false;
 	for (int i = 0; i < BUTTONS_COUNT ; i = i + 1) {
 		if( code == RbutCodes[i] ){
-			//Serial.print(" : ");
-			//Serial.print(RbutColors[i], HEX);
-			Serial.print(" -> ");
+			//DEBUG_PRINT(" : ");
+			//DEBUG_PRINTHEX(RbutColors[i]);
+			DEBUG_PRINT(" -> ");
 
 			last_ir_button = 0; //no repat else if specified
 				
@@ -328,83 +340,128 @@ void processIrButtons(unsigned long code) {
 				buttonColor(RgbToHsv(RbutColors[i]),0);
 			}
 			done=true;
+			sendFeedback();
 		}
 	}
 	if(!done){
-		Serial.print(code,HEX);
-		Serial.println(" ...");
+		DEBUG_PRINTHEX(code);
+		DEBUG_PRINTLN(" ...");
 	}
 }
 
 // -----------------------------------------------------------------
-void SendLastColorStatus(){
-  //String cStatus=CHSV(current_color) + String("&") + String(current_color.v) + String("&") + String(current_status);
-  //gw.send(msg_state.set(cStatus.c_str()));
+void sendFeedback(){
+
+	MyMessage msg(CHILD_RGB_ID,V_RGB);
+	char buffer[7];
+	long lc;
+	
+	// ---- RGB report -----------------------
+	//msg.setSensor(CHILD_RGB_ID);
+	//msg.setType(V_RGB);
+
+	// color
+	lc =rgbToLong( CHSV(current_color));
+	ltoa(lc , buffer, 16);
+	gw.send(msg.set( buffer ), ACKSEND);
+	DEBUG_PRINT("RVB=");
+	DEBUG_PRINTLN(buffer);
+
+	// status
+	msg.setType(V_STATUS);
+	gw.send(msg.set( (boolean) current_status), ACKSEND);
+
+	// Brightness
+	if(current_status == 1){
+		msg.setType(V_PERCENTAGE);
+		gw.send(msg.set( map( current_color.v ,0,255, 0,100) ), ACKSEND);
+	}
+
+	// ---- HSV report ------------------------
+	msg.setSensor(CHILD_HSV_ID);
+
+	// color
+	msg.setType(V_RGB);
+
+	lc =hsvToLong(current_color);
+	ltoa(lc , buffer, 16);
+	//gw.send(msg.set( buffer ), ACKSEND);
+	DEBUG_PRINT("HSV=");
+	DEBUG_PRINTLN(buffer);
+
+	// status
+	msg.setType(V_STATUS);
+	gw.send(msg.set( (boolean) current_status), ACKSEND);
+
+	// Brightness
+	if(current_status == 1){
+		msg.setType(V_PERCENTAGE);
+		gw.send(msg.set( map( current_color.v ,0,255, 0,100) ), ACKSEND);
+	}
 }
+
 
 // -----------------------------------------------------------------
 void buttonPower(boolean on){
 	flashStatusLed();
-	Serial.print("Button Power : ");
+	DEBUG_PRINT("Button Power : ");
 	current_anim=0;
 	if(on){
 		current_status=1;
-		Serial.print("ON");
-		Serial.println();
+		DEBUG_PRINTLN("ON");
 		setLedsHSV(current_color);
 	}
 	else{
 		current_status=0;
-		Serial.print("OFF");
-		Serial.println();
+		DEBUG_PRINTLN("OFF");
 		setLedsHSV(CHSV {0,0,0});
 	}
-	Serial.println();
+	DEBUG_PRINTLN();
 }
 
 // -----------------------------------------------------------------
 void buttonSpecial(byte but){
 	flashStatusLed();
-	Serial.print("Button Special : ");
-	Serial.print(but);
-	Serial.println();
+	DEBUG_PRINT("Button Special : ");
+	DEBUG_PRINTLN(but);
 	processAnimation(but, true);
 }
 
 // -----------------------------------------------------------------
 void buttonBrightness(boolean up){
-	Serial.print("Button Brightness : ");
+	DEBUG_PRINT("Button Brightness : ");
 	if(up){
 		if(current_anim==0){
-			Serial.println("UP");
+			DEBUG_PRINTLN("UP");
 			buttonColor(current_color, 1 );
 		}
 		else{
-			Serial.println("FASTER");
+			DEBUG_PRINTLN("FASTER");
 			buttonChangeSpeed( - SPEED_STEP );
 		}
 	}
 	else{
 		if(current_anim==0){
-			Serial.println("DOWN");
+			DEBUG_PRINTLN("DOWN");
 			buttonColor(current_color, -1 );
 		}
 		else{
-			Serial.println("SLOWER");
+			DEBUG_PRINTLN("SLOWER");
 			buttonChangeSpeed( SPEED_STEP );
 		}
 	}
-	Serial.println();
+	DEBUG_PRINTLN();
 }
 
 // -----------------------------------------------------------------
 void buttonColor(CHSV color, int offset){
 	flashStatusLed();
-	Serial.print("Button Color : ");
+	DEBUG_PRINT("Button Color : ");
 	color=dimHSV(color,offset);
 	setLedsHSV(color);
 	current_status=1;
-	current_color=color; 
+	current_color=color;
+	RomSaveCurrentColor();
 }
 
 // -----------------------------------------------------------------
@@ -430,12 +487,10 @@ CHSV dimHSV(CHSV color, int offset){
 }
 
 // -----------------------------------------------------------------
-void setBrightness(byte val, boolean convert){
-	if(convert){
-		val =map(val,0,100,0,255);
-	}
-	Serial.print("Setting Brightness to : ");
-	Serial.println(val);
+void setBrightness(byte val){
+	val =map(val,0,100,0,255);
+	DEBUG_PRINT("Setting Brightness to : ");
+	DEBUG_PRINTLN(val);
 	current_color.v=val;
 	buttonColor(current_color,0);	
 }
@@ -443,9 +498,9 @@ void setBrightness(byte val, boolean convert){
 // -----------------------------------------------------------------
 void incomingMessage(const MyMessage &message) {
 	// We only expect one type of message from controller. But we better check anyway.
-	Serial.println("--> Processing Incoming Message...");
+	DEBUG_PRINTLN("--> Processing Incoming Message...");
 	if (message.isAck()) {
-		Serial.println("This is an ack from gateway");
+		DEBUG_PRINTLN("This is an ack from gateway");
 		return;
 	}
 
@@ -457,17 +512,16 @@ void incomingMessage(const MyMessage &message) {
 		// Store state in eeprom
 		//gw.saveState(0, state);
 	
-		//Serial.print("Incoming change for sensor:");
-		//Serial.print(message.sensor);
-		//Serial.print(", New status: ");
-		//Serial.println(message.getBool());
+		//DEBUG_PRINT("Incoming change for sensor:");
+		//DEBUG_PRINT(message.sensor);
+		//DEBUG_PRINT(", New status: ");
+		//DEBUG_PRINTLN(message.getBool());
 	} 
 	else if (message.type == V_STATUS){
 		buttonPower(message.getBool());
 	}
-	else if (message.type == V_DIMMER){
-		//Serial.println("Dimming 0-100% currently not handled !");
-		setBrightness(message.getByte(), true);
+	else if (message.type == V_PERCENTAGE){
+		setBrightness(message.getByte());
 	}
 	else if (message.type == V_VAR1){
 		// anim mode
@@ -477,8 +531,15 @@ void incomingMessage(const MyMessage &message) {
 		//anim speed
 		setSpeed(message.getULong());		
 	}
+	else if (message.type == V_VAR3){
+		// HSL
+		//String color_string = message.getString();
+		//CHSV color = (long) strtol( &color_string[0], NULL, 16);
+		//CHSV color = longToHsv( (long) message.getString());
+		//buttonColor(color,0);
+	}
 	else{
-		Serial.println("WARNING : message is not handled !");
+		DEBUG_PRINTLN("WARNING : message is not handled !");
 	}
 }
 
@@ -495,25 +556,25 @@ void setLedsRGB(CRGB rgb){
 	analogWrite(GREEN_PIN, rgb.g);
 	analogWrite(BLUE_PIN, rgb.b);	
 
-	Serial.print(" --> RGB=");
-	Serial.print(rgb.r);
-	Serial.print(",");
-	Serial.print(rgb.g);
-	Serial.print(",");
-	Serial.print(rgb.b);
-	Serial.println();
+	DEBUG_PRINT(" --> RGB=");
+	DEBUG_PRINT(rgb.r);
+	DEBUG_PRINT(",");
+	DEBUG_PRINT(rgb.g);
+	DEBUG_PRINT(",");
+	DEBUG_PRINT(rgb.b);
+	DEBUG_PRINTLN();
 }
 
 // -----------------------------------------------------------------
 //void setLedsHSV(const CRGB& rgb){
 void setLedsHSV(CHSV hsv){
-	Serial.print(" --> ( HSV=");
-	Serial.print(hsv.h);
-	Serial.print(",");
-	Serial.print(hsv.s);
-	Serial.print(",");
-	Serial.print(hsv.v);
-	Serial.print(" ) ");
+	DEBUG_PRINT(" --> ( HSV=");
+	DEBUG_PRINT(hsv.h);
+	DEBUG_PRINT(",");
+	DEBUG_PRINT(hsv.s);
+	DEBUG_PRINT(",");
+	DEBUG_PRINT(hsv.v);
+	DEBUG_PRINT(" ) ");
 	setLedsRGB( CHSV(hsv) );
 }
 
@@ -677,8 +738,35 @@ CHSV RgbToHsv(CRGB rgb){
      return rgb2hsv_approximate(rgb);
 }
 
+// -----------------------------------------------------------------
+unsigned long hsvToLong(CHSV in){
+	return (((long)in.h & 0xFF) << 16) + (((long)in.s & 0xFF) << 8) + ((long)in.v & 0xFF);
+}
 
+// -----------------------------------------------------------------
+unsigned long rgbToLong(CRGB in){
+	return (((long)in.r & 0xFF) << 16) + (((long)in.g & 0xFF) << 8) + ((long)in.b & 0xFF);
+}
 
+// -----------------------------------------------------------------
+void RomSaveCurrentColor(){
+	//save it to 1,2,3 positions
+	//but dont stress eeprom if not needed
+	CHSV rom =RomLoadColor();
+	if(current_color.h != rom.h){gw.saveState(1,current_color.h);}
+	if(current_color.s != rom.s){gw.saveState(2,current_color.s);}
+	if(current_color.v != rom.v){gw.saveState(3,current_color.v);}
+}
+
+// -----------------------------------------------------------------
+CHSV RomLoadColor(){
+	//load from 1,2,3 positions
+	CHSV color;
+	color.h=gw.loadState(1);
+	color.s=gw.loadState(2);
+	color.v=gw.loadState(3);
+	return color;
+}
 
 /*
 // OLD ###################################################################################
@@ -692,8 +780,13 @@ CRGB longToRgb(unsigned long rgb){
 }
 
 // ----------------------------------------------
-unsigned long rgbToLong(CRGB in){
-	return (((long)in.r & 0xFF) << 16) + (((long)in.g & 0xFF) << 8) + ((long)in.b & 0xFF);
+CHSV longToHsv(unsigned long hsv){
+	CHSV out;
+	out.h = hsv >> 16;
+	out.s = hsv >> 8 & 0xFF;
+	out.v = hsv & 0xFF;
+	return out;
+}
 
 // ----------------------------------------------
 
@@ -702,11 +795,11 @@ void dump(decode_results *results) {
 	// Call this after IRrecv::decode()
 	int count = results->rawlen;
  if (results->decode_type == NEC) {
-		Serial.print("Decoded NEC: ");
+		DEBUG_PRINT("Decoded NEC: ");
 	}
-	Serial.print(results->value, HEX);
-	Serial.print(" (");
-	Serial.print(results->bits, DEC);
-	Serial.println(" bits)");
+	DEBUG_PRINT(results->value, HEX);
+	DEBUG_PRINT(" (");
+	DEBUG_PRINT(results->bits, DEC);
+	DEBUG_PRINT(" bits)");
 }
 */
