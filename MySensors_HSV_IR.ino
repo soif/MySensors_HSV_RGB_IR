@@ -10,7 +10,7 @@
 #include <DallasTemperature.h>
 #include <OneWire.h>
 
-#define NODE_ID 199
+#define NODE_ID 199		// 255 for Auto
 #define CHILD_RGB_ID 1
 #define CHILD_MODE_ID 2
 #define CHILD_SPEED_ID 3
@@ -45,6 +45,8 @@
 
 #define LED_DURATION 70		// Status led ON duration
 
+// internal
+#define DALLAS_CONVERT_TIME 751	// Depends on DS18B20  resolution 94, 188, 375, 750
 
 #define BUTTONS_COUNT 24
 
@@ -113,7 +115,7 @@ unsigned long	last_ir_button=0;
 
 float 			last_temp 		= -1;
 unsigned long	last_temp_time	= 0;
-int16_t 		temp_conversion_time =0;
+//int16_t 		temp_conversion_time =0;
 boolean 		temp_converting 	=false;
 
 byte			last_ldr		= 0;
@@ -158,9 +160,8 @@ void setup() {
     dallas.begin();
     dallas.getAddress(temp_address, 0);
 	dallas.setResolution(temp_address,12);
-	temp_conversion_time = dallas.millisToWaitForConversion(dallas.getResolution());
     dallas.setWaitForConversion(false);
-	
+
 	gw.begin(incomingMessage, NODE_ID, false);
 	gw.sendSketchInfo(INFO_NAME, INFO_VERS);
 	gw.present(CHILD_RGB_ID, 	S_RGB_LIGHT);
@@ -195,25 +196,30 @@ void processSensors(){
 	// dallas Sensor
 	if(millis() > last_temp_time + TEMP_INTERVAL ){
 
+		// wait that sensor is ready (DALLAS_CONVERT_TIME) to send the lat measure (not the previous one) 
 		if(!temp_converting){
 			//Serial.println("Requesting temp");
 		    dallas.requestTemperatures(); // Send the command to get temperatures
 		    temp_converting=true;
 		    return;
 		}
-		else if(millis() < last_temp_time + TEMP_INTERVAL + temp_conversion_time){
+		else if(millis() < last_temp_time + TEMP_INTERVAL + DALLAS_CONVERT_TIME){
 			//Serial.print("t");
 			return;
 		}
 
 		//Serial.println();
+		// Get the Temperature
 		temp_converting=false;	    
 	    float cur_temp = dallas.getTempC(temp_address);
 
+		// if Temperature is correctly defined
 	    if (! isnan(cur_temp)) {
 			cur_temp = ( (int) (cur_temp * 10 ) )/ 10.0 ; //rounded to 1 dec
 			Serial.print("Temperature is : ");
 			Serial.println(cur_temp);
+
+	    	// Send only if temperature has changed
 	    	if (cur_temp != last_temp  && cur_temp != -127.00 && cur_temp != 85.0) {
 	    		gw.send(msg_temp.set(cur_temp, 1));
 	        	last_temp = cur_temp;
@@ -224,8 +230,8 @@ void processSensors(){
 	    		last_temp_time = last_temp_time + 33000;
 			}
 	    }
+	    //else temperatured bugged, retrying soon : in 13s
 	    else{
-	      	// (bug!) retry in 13s
 	    	last_temp_time = last_temp_time + 13000;
 	    }
 	}
