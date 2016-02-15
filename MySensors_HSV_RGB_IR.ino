@@ -1,6 +1,6 @@
 /*
-	MySensors HSV IR - Version 0.4
-	Copyright 2016 Francois Dechery
+	MySensors HSV IR - Version 0.5
+	Copyright 2016 François Déchery
 
 	https://media.readthedocs.org/pdf/mysensors/latest/mysensors.pdf
 */
@@ -17,9 +17,11 @@
 
 // Defines ##############################################################################
 #define INFO_NAME "HSV RGB IR Led Strip"
-#define INFO_VERS "0.4"
+#define INFO_VERS "0.5"
 
-#define NODE_ID 199		// 255 for Auto
+#define GW_NODE_ID 199		// 255 for Auto
+#define GW_REPEATER true
+
 #define CHILD_RGB_ID 1
 #define CHILD_HSV_ID 2
 #define CHILD_TEMP_ID 3
@@ -136,13 +138,13 @@ unsigned long	last_led_time	= 0;
 IRrecv irrecv(IR_PIN); 		//IRrecv irrecv(IR_PIN, IR_LED_PIN); dont work. Why ?
 decode_results results;
 
-OneWire            oneWire(ONEWIRE_PIN);
-DallasTemperature  dallas(&oneWire);
+OneWire           	oneWire(ONEWIRE_PIN);
+DallasTemperature 	dallas(&oneWire);
 DeviceAddress		temp_address;
 
-MyTransportNRF24 transport(CE_PIN, CS_PIN, RF24_PA_LEVEL);
-MyHwATMega328 hw;
-MySensor gw(transport,hw);
+MyTransportNRF24	transport(CE_PIN, CS_PIN, RF24_PA_LEVEL);
+MyHwATMega328 		hw;
+MySensor 			gw(transport,hw);
 
 MyMessage msg_temp(CHILD_TEMP_ID,	V_TEMP);
 MyMessage msg_ldr(CHILD_LDR_ID,		V_LIGHT_LEVEL);
@@ -170,7 +172,7 @@ void setup() {
 	dallas.setResolution(temp_address,12);
     dallas.setWaitForConversion(false);
 
-	gw.begin(receiveMessage, NODE_ID, false);
+	gw.begin(receiveMessage, GW_NODE_ID, GW_REPEATER);
 	gw.sendSketchInfo(INFO_NAME, INFO_VERS);
 	
 	gw.present(CHILD_RGB_ID, 	S_RGB_LIGHT);
@@ -330,7 +332,7 @@ void processIrButtons(unsigned long code) {
 	}
 	if(!done){
 		//DEBUG_PRINTHEX(code);
-		//DEBUG_PRINTLN(" ...");
+		DEBUG_PRINTLN();
 	}
 }
 
