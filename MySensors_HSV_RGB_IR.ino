@@ -1,5 +1,5 @@
 /*
-	MySensors HSV IR - Version 0.1
+	MySensors HSV IR - Version 0.3
 	Copyright 2016 Francois Dechery
 
 	https://media.readthedocs.org/pdf/mysensors/latest/mysensors.pdf
@@ -16,14 +16,14 @@
 #include <OneWire.h>
 
 // Defines ##############################################################################
+#define INFO_NAME "HSV RGB IR Led Strip"
+#define INFO_VERS "0.3"
+
 #define NODE_ID 199		// 255 for Auto
 #define CHILD_RGB_ID 1
 #define CHILD_HSV_ID 2
 #define CHILD_TEMP_ID 3
 #define CHILD_LDR_ID 4
-
-#define INFO_NAME "HSV RGB IR"
-#define INFO_VERS "0.2"
 
 #define ONEWIRE_PIN 2 
 #define IR_PIN 4
@@ -362,7 +362,7 @@ void sendMessage(){
 	msg.setSensor(CHILD_HSV_ID);
 
 	// color
-	msg.setType(V_RGB);
+	msg.setType(V_RGB); // wse should have a V_HSV type !!!
 
 	lc =hsvToLong(current_color);
 	ltoa(lc , buffer, 16);
@@ -391,11 +391,16 @@ void receiveMessage(const MyMessage &message) {
 		return;
 	}
 
-	if (message.type == V_RGB) {
+	if (message.type == V_RGB && message.sensor == CHILD_RGB_ID ) {
 		String color_string = message.getString();
 		CRGB color = (long) strtol( &color_string[0], NULL, 16);
 		buttonColor(RgbToHsv(color),0);
 	} 
+	else if (message.type == V_RGB && message.sensor == CHILD_HSV_ID ) {
+		String color_string = message.getString();
+		long color = (long) strtol( &color_string[0], NULL, 16);
+		buttonColor(longToHsv(color),0);
+	}
 	else if (message.type == V_STATUS){
 		buttonPower(message.getBool());
 	}
@@ -403,17 +408,10 @@ void receiveMessage(const MyMessage &message) {
 		setBrightness(message.getByte());
 	}
 	else if (message.type == V_VAR1){
-		// HSL
-		//String color_string = message.getString();
-		//CHSV color = (long) strtol( &color_string[0], NULL, 16);
-		//CHSV color = longToHsv( (long) message.getString());
-		//buttonColor(color,0);
-	}
-	else if (message.type == V_VAR2){
 		// anim mode
 		buttonSpecial(message.getByte());
 	}
-	else if (message.type == V_VAR3){
+	else if (message.type == V_VAR2){
 		//anim speed
 		setSpeed(message.getULong());		
 	}
@@ -743,6 +741,15 @@ CHSV RomLoadColor(){
 	return color;
 }
 
+// ----------------------------------------------
+CHSV longToHsv(unsigned long hsv){
+	CHSV out;
+	out.h = hsv >> 16;
+	out.s = hsv >> 8 & 0xFF;
+	out.v = hsv & 0xFF;
+	return out;
+}
+
 
 
 
@@ -800,14 +807,6 @@ CRGB longToRgb(unsigned long rgb){
 	return out;
 }
 
-// ----------------------------------------------
-CHSV longToHsv(unsigned long hsv){
-	CHSV out;
-	out.h = hsv >> 16;
-	out.s = hsv >> 8 & 0xFF;
-	out.v = hsv & 0xFF;
-	return out;
-}
 
 // ----------------------------------------------
 void dumpIR(decode_results *results) {
