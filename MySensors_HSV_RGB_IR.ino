@@ -1,5 +1,5 @@
 /*
-	MySensors HSV IR - Version 0.3
+	MySensors HSV IR - Version 0.4
 	Copyright 2016 Francois Dechery
 
 	https://media.readthedocs.org/pdf/mysensors/latest/mysensors.pdf
@@ -17,7 +17,7 @@
 
 // Defines ##############################################################################
 #define INFO_NAME "HSV RGB IR Led Strip"
-#define INFO_VERS "0.3"
+#define INFO_VERS "0.4"
 
 #define NODE_ID 199		// 255 for Auto
 #define CHILD_RGB_ID 1
@@ -45,7 +45,7 @@
 #define ANIM4_SPEED 700			// smooth speed
 
 #define TEMP_INTERVAL 91000		// (1:31 min) temperature is sent at this interval (ms)
-//#define TEMP_INTERVAL 8000	// temperature is sent at this interval (ms)
+//#define TEMP_INTERVAL 5000	// temperature is sent at this interval (ms)
 
 #define LDR_INTERVAL 59000		// (1 min) luminosity is send at this interval (ms)
 
@@ -238,11 +238,15 @@ void processSensors(){
 	    if (! isnan(this_temp)) {
 			int cur_temp =  (int) (this_temp * 10 )  ; //rounded to 1 dec
 
-			//DEBUG_PRINT("Temp * 10 = "); DEBUG_PRINTLN(cur_temp);
+			//DEBUG_PRINT("Temp*10="); DEBUG_PRINTLN(cur_temp);
 
-	    	// Send only if temperature has changed
-	    	if (cur_temp != last_temp  && cur_temp != -1270 && cur_temp != 850) {
-	    		gw.send(msg_temp.set( (float) cur_temp / 10.0 , ACKSEND));
+	    	if (cur_temp == -1270 || cur_temp == 850) {
+			    //temperatured bugged, retrying soon : in 13s
+		    	last_temp_time = last_temp_time + 13000;
+			}
+			else if(cur_temp != last_temp ){
+		    	// Send only if temperature has changed
+	    		gw.send(msg_temp.set( cur_temp / 10.0, 1) , ACKSEND);
 	        	last_temp = cur_temp;
 				last_temp_time= millis();
 			}
@@ -266,7 +270,7 @@ void processSensors(){
 
 	    // Send only if luminosity has changed
 		if(cur_ldr != last_ldr){
-	    	gw.send(msg_ldr.set(cur_ldr, ACKSEND ));
+	    	gw.send(msg_ldr.set(cur_ldr), ACKSEND);
 			last_ldr		= cur_ldr;
 			last_ldr_time	= millis();			
 		}
