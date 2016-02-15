@@ -154,8 +154,8 @@ MyMessage msg_ldr(CHILD_LDR_ID,		V_LIGHT_LEVEL);
 void setup() {
 	Serial.begin(115200);
 	delay(100);
-	DEBUG_PRINTLN(" ");
-	DEBUG_PRINTLN("### Booting...");
+	DEBUG_PRINTLN();
+	//DEBUG_PRINTLN("### Booting...");
 
 	pinMode(RED_PIN, OUTPUT);		
 	pinMode(GREEN_PIN, OUTPUT);
@@ -170,7 +170,7 @@ void setup() {
 	dallas.setResolution(temp_address,12);
     dallas.setWaitForConversion(false);
 
-	gw.begin(incomingMessage, NODE_ID, false);
+	gw.begin(receiveMessage, NODE_ID, false);
 	gw.sendSketchInfo(INFO_NAME, INFO_VERS);
 	
 	gw.present(CHILD_RGB_ID, 	S_RGB_LIGHT);
@@ -182,7 +182,7 @@ void setup() {
 	
 	current_color = RomLoadColor();
 
-	DEBUG_PRINTLN("### Boot complete !");
+	DEBUG_PRINTLN("####");
 }
 
 // -----------------------------------------------------------------
@@ -192,6 +192,21 @@ void loop() {
 	processSensors();
 	updateAnimation();
 	updateStatusLed();
+}
+
+// -----------------------------------------------------------------
+void processIr() {
+	if (irrecv.decode(&results)) {
+		//DEBUG_PRINTLN(results.value, HEX);
+		//dumpIR(&results);
+		unsigned long code = results.value;
+		if( code == 0xFFFFFFFF){
+			DEBUG_PRINT("Repeat ");
+			code = last_ir_button;
+		}
+		processIrButtons(code);
+		irrecv.resume(); // Receive the next value
+	}
 }
 
 // -----------------------------------------------------------------
@@ -223,11 +238,11 @@ void processSensors(){
 	    if (! isnan(this_temp)) {
 			int cur_temp =  (int) (this_temp * 10 )  ; //rounded to 1 dec
 
-			DEBUG_PRINT("Temp * 10 = "); DEBUG_PRINTLN(cur_temp);
+			//DEBUG_PRINT("Temp * 10 = "); DEBUG_PRINTLN(cur_temp);
 
 	    	// Send only if temperature has changed
 	    	if (cur_temp != last_temp  && cur_temp != -1270 && cur_temp != 850) {
-	    		gw.send(msg_temp.set( cur_temp / 10.0 , ACKSEND));
+	    		gw.send(msg_temp.set( (float) cur_temp / 10.0 , ACKSEND));
 	        	last_temp = cur_temp;
 				last_temp_time= millis();
 			}
@@ -247,7 +262,7 @@ void processSensors(){
 		//map to 0-100%
 		byte cur_ldr = map( analogRead(LDR_PIN), 0,1023, 0,100);
 
-		DEBUG_PRINT("LDR is : "); DEBUG_PRINTLN(cur_ldr);
+		//DEBUG_PRINT("LDR is : "); DEBUG_PRINTLN(cur_ldr);
 
 	    // Send only if luminosity has changed
 		if(cur_ldr != last_ldr){
@@ -262,22 +277,6 @@ void processSensors(){
 	}
 }
 
-
-// -----------------------------------------------------------------
-void processIr() {
-	if (irrecv.decode(&results)) {
-		//DEBUG_PRINTLN(results.value, HEX);
-		//dumpIR(&results);
-		unsigned long code = results.value;
-		if( code == 0xFFFFFFFF){
-			DEBUG_PRINT("Repeat ");
-			code = last_ir_button;
-		}
-		processIrButtons(code);
-		irrecv.resume(); // Receive the next value
-	}
-}
-
 // -----------------------------------------------------------------
 void processIrButtons(unsigned long code) {
 	//DEBUG_PRINT(results->value, HEX);
@@ -286,7 +285,7 @@ void processIrButtons(unsigned long code) {
 		if( code == RbutCodes[i] ){
 			//DEBUG_PRINT(" : ");
 			//DEBUG_PRINTHEX(RbutColors[i]);
-			DEBUG_PRINT(" -> ");
+			//DEBUG_PRINT(" -> ");
 
 			last_ir_button = 0; //no repat else if specified
 				
@@ -322,18 +321,17 @@ void processIrButtons(unsigned long code) {
 				buttonColor(RgbToHsv(RbutColors[i]),0);
 			}
 			done=true;
-			sendFeedback();
+			sendMessage();
 		}
 	}
 	if(!done){
-		DEBUG_PRINTHEX(code);
-		DEBUG_PRINTLN(" ...");
+		//DEBUG_PRINTHEX(code);
+		//DEBUG_PRINTLN(" ...");
 	}
 }
 
-
 // -----------------------------------------------------------------
-void sendFeedback(){
+void sendMessage(){
 
 	MyMessage msg(CHILD_RGB_ID,V_RGB);
 	char buffer[7];
@@ -384,9 +382,50 @@ void sendFeedback(){
 }
 
 // -----------------------------------------------------------------
+void receiveMessage(const MyMessage &message) {
+	// We only expect one type of message from controller. But we better check anyway.
+	DEBUG_PRINTLN("-> MESSAGE");
+
+	if (message.isAck()) {
+		DEBUG_PRINTLN("Is ACK");
+		return;
+	}
+
+	if (message.type == V_RGB) {
+		String color_string = message.getString();
+		CRGB color = (long) strtol( &color_string[0], NULL, 16);
+		buttonColor(RgbToHsv(color),0);
+	} 
+	else if (message.type == V_STATUS){
+		buttonPower(message.getBool());
+	}
+	else if (message.type == V_PERCENTAGE){
+		setBrightness(message.getByte());
+	}
+	else if (message.type == V_VAR1){
+		// HSL
+		//String color_string = message.getString();
+		//CHSV color = (long) strtol( &color_string[0], NULL, 16);
+		//CHSV color = longToHsv( (long) message.getString());
+		//buttonColor(color,0);
+	}
+	else if (message.type == V_VAR2){
+		// anim mode
+		buttonSpecial(message.getByte());
+	}
+	else if (message.type == V_VAR3){
+		//anim speed
+		setSpeed(message.getULong());		
+	}
+	else{
+		//DEBUG_PRINTLN("WARNING : message is not handled !");
+	}
+}
+
+// -----------------------------------------------------------------
 void buttonPower(boolean on){
 	flashStatusLed();
-	DEBUG_PRINT("Button Power : ");
+	DEBUG_PRINT("BUT Power: ");
 	current_anim=0;
 	if(on){
 		current_status=1;
@@ -404,14 +443,14 @@ void buttonPower(boolean on){
 // -----------------------------------------------------------------
 void buttonSpecial(byte but){
 	flashStatusLed();
-	DEBUG_PRINT("Button Special : ");
+	DEBUG_PRINT("BUT Special: ");
 	DEBUG_PRINTLN(but);
 	processAnimation(but, true);
 }
 
 // -----------------------------------------------------------------
 void buttonBrightness(boolean up){
-	DEBUG_PRINT("Button Brightness : ");
+	DEBUG_PRINT("Button Brightness: ");
 	if(up){
 		if(current_anim==0){
 			DEBUG_PRINTLN("UP");
@@ -438,7 +477,7 @@ void buttonBrightness(boolean up){
 // -----------------------------------------------------------------
 void buttonColor(CHSV color, int offset){
 	flashStatusLed();
-	DEBUG_PRINT("Button Color : ");
+	DEBUG_PRINT("BUT Color: ");
 	color=dimHSV(color,offset);
 	setLedsHSV(color);
 	current_status=1;
@@ -471,51 +510,13 @@ CHSV dimHSV(CHSV color, int offset){
 // -----------------------------------------------------------------
 void setBrightness(byte val){
 	val =map(val,0,100,0,255);
-	DEBUG_PRINT("Setting Brightness to : ");
+	DEBUG_PRINT("Set Bright. : ");
 	DEBUG_PRINTLN(val);
 	current_color.v=val;
+	if(val==0){
+		current_status=0;
+	}
 	buttonColor(current_color,0);	
-}
-
-// -----------------------------------------------------------------
-void incomingMessage(const MyMessage &message) {
-	// We only expect one type of message from controller. But we better check anyway.
-	DEBUG_PRINTLN("--> Processing Incoming Message...");
-
-	if (message.isAck()) {
-		DEBUG_PRINTLN("This is an ack from gateway");
-		return;
-	}
-
-	if (message.type == V_RGB) {
-		String color_string = message.getString();
-		CRGB color = (long) strtol( &color_string[0], NULL, 16);
-		buttonColor(RgbToHsv(color),0);
-	} 
-	else if (message.type == V_STATUS){
-		buttonPower(message.getBool());
-	}
-	else if (message.type == V_PERCENTAGE){
-		setBrightness(message.getByte());
-	}
-	else if (message.type == V_VAR1){
-		// anim mode
-		buttonSpecial(message.getByte());
-	}
-	else if (message.type == V_VAR2){
-		//anim speed
-		setSpeed(message.getULong());		
-	}
-	else if (message.type == V_VAR3){
-		// HSL
-		//String color_string = message.getString();
-		//CHSV color = (long) strtol( &color_string[0], NULL, 16);
-		//CHSV color = longToHsv( (long) message.getString());
-		//buttonColor(color,0);
-	}
-	else{
-		DEBUG_PRINTLN("WARNING : message is not handled !");
-	}
 }
 
 // -----------------------------------------------------------------
@@ -531,7 +532,7 @@ void setLedsRGB(CRGB rgb){
 	analogWrite(GREEN_PIN, rgb.g);
 	analogWrite(BLUE_PIN, rgb.b);	
 
-	DEBUG_PRINT(" --> RGB=");
+	DEBUG_PRINT(" - RGB=");
 	DEBUG_PRINT(rgb.r);
 	DEBUG_PRINT(",");
 	DEBUG_PRINT(rgb.g);
@@ -543,13 +544,12 @@ void setLedsRGB(CRGB rgb){
 // -----------------------------------------------------------------
 //void setLedsHSV(const CRGB& rgb){
 void setLedsHSV(CHSV hsv){
-	DEBUG_PRINT(" --> ( HSV=");
+	DEBUG_PRINT(" - HSV=");
 	DEBUG_PRINT(hsv.h);
 	DEBUG_PRINT(",");
 	DEBUG_PRINT(hsv.s);
 	DEBUG_PRINT(",");
 	DEBUG_PRINT(hsv.v);
-	DEBUG_PRINT(" ) ");
 	setLedsRGB( CHSV(hsv) );
 }
 
@@ -574,16 +574,16 @@ void confirmFlash(){
 // -----------------------------------------------------------------
 void confirmRgb(){
 	setLedsRGB(CRGB::Black);
-	gw.wait(100);
+	gw.wait(200);
 
 	setLedsRGB(CRGB::Red);
-	gw.wait(300);
+	gw.wait(400);
 
 	setLedsRGB(CRGB::Lime);
-	gw.wait(300);
+	gw.wait(400);
 
 	setLedsRGB(CRGB::Blue);
-	gw.wait(300);
+	gw.wait(400);
 
 	setLedsRGB(CRGB::Black);
 }
