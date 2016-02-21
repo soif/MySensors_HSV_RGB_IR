@@ -176,7 +176,7 @@ void setup() {
 	gw.sendSketchInfo(INFO_NAME, INFO_VERS);
 	
 	gw.present(CHILD_RGB_ID, 	S_RGB_LIGHT);
-	gw.present(CHILD_HSV_ID, 	S_RGB_LIGHT);
+	//gw.present(CHILD_HSV_ID, 	S_RGB_LIGHT);
 	gw.present(CHILD_TEMP_ID,	S_TEMP);
 	gw.present(CHILD_LDR_ID, 	S_LIGHT_LEVEL);
 	
@@ -201,6 +201,7 @@ void processIr() {
 	if (irrecv.decode(&results)) {
 		//DEBUG_PRINTLN(results.value, HEX);
 		//dumpIR(&results);
+		DEBUG_PRINTLN(".");
 		unsigned long code = results.value;
 		if( code == 0xFFFFFFFF){
 			DEBUG_PRINT("Repeat ");
@@ -332,7 +333,7 @@ void processIrButtons(unsigned long code) {
 	}
 	if(!done){
 		//DEBUG_PRINTHEX(code);
-		DEBUG_PRINTLN();
+		DEBUG_PRINTLN('*');
 	}
 }
 
@@ -348,20 +349,29 @@ void sendMessage(){
 	//msg.setType(V_RGB);
 
 	// color
-	lc =rgbToLong( CHSV(current_color));
-	ltoa(lc , buffer, 16);
-	gw.send(msg.set( buffer ), ACKSEND);
-	DEBUG_PRINT("RVB=");
-	DEBUG_PRINTLN(buffer);
+	if(current_status == 1){
+		lc =rgbToLong( CHSV(current_color));
+		ltoa(lc , buffer, 16);
+		//strtoupper(buffer);
+		DEBUG_PRINT("RVB=");
+		DEBUG_PRINTLN(buffer);
+		gw.send(msg.set( buffer ), ACKSEND);
+	}
+	else{
+		gw.send(msg.set( "000000" ), ACKSEND);
+	}
 
 	// status
 	msg.setType(V_STATUS);
-	gw.send(msg.set( (boolean) current_status), ACKSEND);
+	//gw.send(msg.set( (boolean) current_status), ACKSEND);
 
 	// Brightness
+	msg.setType(V_PERCENTAGE);
 	if(current_status == 1){
-		msg.setType(V_PERCENTAGE);
-		gw.send(msg.set( map( current_color.v ,0,255, 0,100) ), ACKSEND);
+		//gw.send(msg.set( map( current_color.v ,0,255, 0,100) ), ACKSEND);
+	}
+	else{
+		//gw.send(msg.set( 0 ), ACKSEND);
 	}
 
 	// ---- HSV report ------------------------
@@ -372,18 +382,22 @@ void sendMessage(){
 
 	lc =hsvToLong(current_color);
 	ltoa(lc , buffer, 16);
-	//gw.send(msg.set( buffer ), ACKSEND);
+	//strtoupper(buffer);
 	DEBUG_PRINT("HSV=");
 	DEBUG_PRINTLN(buffer);
+	//gw.send(msg.set( buffer ), ACKSEND);
 
 	// status
 	msg.setType(V_STATUS);
-	gw.send(msg.set( (boolean) current_status), ACKSEND);
+	//gw.send(msg.set( (boolean) current_status), ACKSEND);
 
 	// Brightness
+	msg.setType(V_PERCENTAGE);
 	if(current_status == 1){
-		msg.setType(V_PERCENTAGE);
-		gw.send(msg.set( map( current_color.v ,0,255, 0,100) ), ACKSEND);
+		//gw.send(msg.set( map( current_color.v ,0,255, 0,100) ), ACKSEND);
+	}
+	else{
+		//gw.send(msg.set( 0 ), ACKSEND);
 	}
 }
 
@@ -757,7 +771,14 @@ CHSV longToHsv(unsigned long hsv){
 }
 
 
-
+void strtoupper(char * str){
+    for(int i=0; i<6; i++){
+    	//a-z
+        if (97<=str[i]&&str[i]<=122){
+            str[i]-=32;
+        }
+    }
+}
 
 
 
