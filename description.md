@@ -46,6 +46,6 @@ In order to fit the sketch In an ArduinoPro Mini memory, I had to minimize the I
 ## Photos
 
 #### Parts used
-![remote](images/remote.png)
+![remote](images/remote.jpg)
 
 

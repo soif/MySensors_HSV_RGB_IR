@@ -2,7 +2,7 @@
 
 This Arduino Sketch is a [MySensors](https://www.mysensors.org/) project to control an RGB let strip. It can be controlled using Mysensors message and also using a basic Infra Red remote. The sketch also reports temperature and luminosity using an LDR.
 
-Please read the [documentation](documentation.md), for more information.
+Please read the [description](description.md), for more information.
 
 *Here is the [MySensors forums topic](http://forum.mysensors.org/topic/) about this project.*
 
