@@ -3,11 +3,11 @@
 	"name": 		"MySensors HSV RVB IR",
 	"baseline": 	"controls a RGB strip from HSV or RGB messages, while still working with the IR remote",
 	"description":	"description.md",
-	"version":		"0.1",
+	"version":		"0.5",
 	"type":			"project",
 	"keywords":		"HSV, RGB, IR, InfraRed, Infra Red, LD Strip, mysensors, OpenHardware",
 	"homepage":		"https://www.mysensors.org",
-	"time":			"2016-02-14",	
+	"time":			"2016-02-21",	
 	"license":		"GPL",
 	"authors": [
 		{
@@ -21,29 +21,21 @@
 	"images": [
 		{
 			"type": "main",
-			"file": "wiring.png"
+			"file": "PCB_3D.png"
 		},
 		{
 			"type": "shematic",
 			"file": "shematic.png"
 		},
 		{
-			"type": "wiring",
-			"file": "wiring.png"
-		},
-		{
 			"type": "misc",
 			"file": "remote.jpg"
-		},
-		{
-			"type": "misc",
-			"file": "radio_adapter.jpg"
 		}
 	],
 	"hardware": [
 		{
-			"type": "fritzing",
-			"file": "fritzing.fzz"
+			"type": "eagle",
+			"file": "eagle/eagle.epf"
 		}
 	]
 }

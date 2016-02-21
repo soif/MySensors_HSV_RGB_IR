@@ -25,9 +25,7 @@ In order to fit the sketch In an ArduinoPro Mini memory, I had to minimize the I
 
 ## Hardware notes
 - In order to drive enough juice to the gate of the MOSFET that I have used (IRL44Z), you must use a 5V arduino. (the 3.3V version wont deliver enought voltage!)
-- The schematic doesn't include a 5V to 3.3V converter, because I've used this convenient [adapter board](http://www.aliexpress.com/item/New-Socket-Adapter-plate-Board-for-8Pin-NRF24L01-Wireless-Transceive-module-51/32230227557.html)
 - The RGB led is helpful for debugging purpose, but not really needed in "production"
-- The IR receiver in the schematic doesn't have the same pinnout as mine.
 
 
 
@@ -36,18 +34,18 @@ In order to fit the sketch In an ArduinoPro Mini memory, I had to minimize the I
 
 
 
+## PCB View
+![box1](images/PCB_3D.png)
+
+
+## Proto Wiring
+![wiring](images/wiring.png)
+
+
+
 ## Photos
 
 #### Parts used
 ![remote](images/remote.png)
-![remote](images/radio_adapter.png)
 
-#### In the box
-![box1](images/box1.png)
-![box2](images/box2.png)
-
-
-
-## Wiring Overview
-![wiring](images/wiring.png)
 
