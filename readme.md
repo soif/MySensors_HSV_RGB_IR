@@ -1,11 +1,18 @@
-# MySensors HSL IR
+# MySensors HSV RVB IR
 
-This Arduino Sketch is a [MySensors](https://www.mysensors.org/) project to control an RGB let strip. It can be controlled using Mysensors message and also using a basic Infra Red remote. The sketch also reports temperature and luminosity using an LDR.
+
+
+This Arduino Sketch is a [MySensors](https://www.mysensors.org/) project to control an RGB let strip. It can be controlled using Mysensors messages (both HSV and RVB) , but still using a basic Infra Red remote. The sketch also reports temperature and luminosity using an LDR.
+
 
 Please read the [description](description.md), for more information.
 
 *Here is the [MySensors forums topic](http://forum.mysensors.org/topic/) about this project.*
 
+
+## Disclaimer
+
+**THIS PROJECT IS CURRENTLY AN APHA VERSION !** The sotware is mostly finished, and breadboard testing run fine, but the final Schematic and PCB is a work in progress...
 
 
 ## Licence
