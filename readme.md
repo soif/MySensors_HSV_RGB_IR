@@ -15,7 +15,7 @@ Please read the [description](description.md), for more information.
 **THIS PROJECT IS CURRENTLY AN APHA VERSION !** The sotware is mostly finished, and breadboard testing run fine, but the final Schematic and PCB is a work in progress...
 
 
-## Licence
+## License
 
 This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation; either version 2 of the License, or (at your option) any later version.
 
